@@ -14,8 +14,11 @@ import { Route as CreateRouteImport } from './routes/create'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as NotificationsRouteImport } from './routes/notifications'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RequestsRouteImport } from './routes/requests'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
+import { Route as CreatorIndexRouteImport } from './routes/creator.index'
+import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -42,6 +45,11 @@ const NotificationsRoute = NotificationsRouteImport.update({
   path: '/notifications',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RequestsRoute = RequestsRouteImport.update({
   id: '/requests',
   path: '/requests',
@@ -52,6 +60,16 @@ const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   path: '/chat/$threadId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorIndexRoute = CreatorIndexRouteImport.update({
+  id: '/creator/',
+  path: '/creator/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CreatorDashboardRoute = CreatorDashboardRouteImport.update({
+  id: '/creator/dashboard',
+  path: '/creator/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -59,8 +77,11 @@ export interface FileRoutesByFullPath {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator/': typeof CreatorIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,8 +89,11 @@ export interface FileRoutesByTo {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator': typeof CreatorIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -78,8 +102,11 @@ export interface FileRoutesById {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
+  '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
+  '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator/': typeof CreatorIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -89,8 +116,11 @@ export interface FileRouteTypes {
     | '/discover'
     | '/inbox'
     | '/notifications'
+    | '/profile'
     | '/requests'
     | '/chat/$threadId'
+    | '/creator/dashboard'
+    | '/creator/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,8 +128,11 @@ export interface FileRouteTypes {
     | '/discover'
     | '/inbox'
     | '/notifications'
+    | '/profile'
     | '/requests'
     | '/chat/$threadId'
+    | '/creator/dashboard'
+    | '/creator'
   id:
     | '__root__'
     | '/'
@@ -107,8 +140,11 @@ export interface FileRouteTypes {
     | '/discover'
     | '/inbox'
     | '/notifications'
+    | '/profile'
     | '/requests'
     | '/chat/$threadId'
+    | '/creator/dashboard'
+    | '/creator/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -117,8 +153,11 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   InboxRoute: typeof InboxRoute
   NotificationsRoute: typeof NotificationsRoute
+  ProfileRoute: typeof ProfileRoute
   RequestsRoute: typeof RequestsRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
+  CreatorDashboardRoute: typeof CreatorDashboardRoute
+  CreatorIndexRoute: typeof CreatorIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -158,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotificationsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/requests': {
       id: '/requests'
       path: '/requests'
@@ -172,6 +218,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatThreadIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creator/': {
+      id: '/creator/'
+      path: '/creator'
+      fullPath: '/creator/'
+      preLoaderRoute: typeof CreatorIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/creator/dashboard': {
+      id: '/creator/dashboard'
+      path: '/creator/dashboard'
+      fullPath: '/creator/dashboard'
+      preLoaderRoute: typeof CreatorDashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -181,8 +241,11 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   InboxRoute: InboxRoute,
   NotificationsRoute: NotificationsRoute,
+  ProfileRoute: ProfileRoute,
   RequestsRoute: RequestsRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
+  CreatorDashboardRoute: CreatorDashboardRoute,
+  CreatorIndexRoute: CreatorIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
