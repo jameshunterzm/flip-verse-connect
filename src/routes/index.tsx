@@ -18,7 +18,7 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Flip Chat — Flip Between Friends. Flip Into Fame." },
       {
         property: "og:description",
-        content: "Private with friends. Public as a creator. Two sides, one you.",
+        content: "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from.",
       },
     ],
   }),

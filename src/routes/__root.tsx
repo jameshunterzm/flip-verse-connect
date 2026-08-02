@@ -84,11 +84,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         content:
           "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from.",
       },
-      { property: "og:title", content: "Flip Chat" },
-      { property: "og:description", content: "Flip Between Friends. Flip Into Fame." },
+      { property: "og:title", content: "Flip Chat — Flip Between Friends. Flip Into Fame." },
+      { property: "og:description", content: "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "theme-color", content: "#12121A" },
+      { name: "twitter:title", content: "Flip Chat — Flip Between Friends. Flip Into Fame." },
+      { name: "twitter:description", content: "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2913d002-ac70-445b-9a60-126b83e0e34d/id-preview-ac6bcaa6--b849ba32-089e-4ad9-bdfb-c6ffe0904999.lovable.app-1785668355235.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/2913d002-ac70-445b-9a60-126b83e0e34d/id-preview-ac6bcaa6--b849ba32-089e-4ad9-bdfb-c6ffe0904999.lovable.app-1785668355235.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
