@@ -10,12 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as DiscoverRouteImport } from './routes/discover'
 import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RequestsRouteImport } from './routes/requests'
+import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as CreatorIndexRouteImport } from './routes/creator.index'
 import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
@@ -23,6 +26,16 @@ import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CreateRoute = CreateRouteImport.update({
@@ -55,6 +68,11 @@ const RequestsRoute = RequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   id: '/chat/$threadId',
   path: '/chat/$threadId',
@@ -73,24 +91,30 @@ const CreatorDashboardRoute = CreatorDashboardRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator/': typeof CreatorIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator': typeof CreatorIndexRoute
@@ -98,12 +122,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
+  '/auth': typeof AuthRoute
   '/create': typeof CreateRoute
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/settings': typeof SettingsRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator/': typeof CreatorIndexRoute
@@ -112,36 +139,45 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
+    | '/auth'
     | '/create'
     | '/discover'
     | '/inbox'
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/settings'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
+    | '/auth'
     | '/create'
     | '/discover'
     | '/inbox'
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/settings'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator'
   id:
     | '__root__'
     | '/'
+    | '/admin'
+    | '/auth'
     | '/create'
     | '/discover'
     | '/inbox'
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/settings'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator/'
@@ -149,12 +185,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
+  AuthRoute: typeof AuthRoute
   CreateRoute: typeof CreateRoute
   DiscoverRoute: typeof DiscoverRoute
   InboxRoute: typeof InboxRoute
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RequestsRoute: typeof RequestsRoute
+  SettingsRoute: typeof SettingsRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   CreatorDashboardRoute: typeof CreatorDashboardRoute
   CreatorIndexRoute: typeof CreatorIndexRoute
@@ -167,6 +206,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/create': {
@@ -211,6 +264,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/$threadId': {
       id: '/chat/$threadId'
       path: '/chat/$threadId'
@@ -237,12 +297,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
+  AuthRoute: AuthRoute,
   CreateRoute: CreateRoute,
   DiscoverRoute: DiscoverRoute,
   InboxRoute: InboxRoute,
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RequestsRoute: RequestsRoute,
+  SettingsRoute: SettingsRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   CreatorDashboardRoute: CreatorDashboardRoute,
   CreatorIndexRoute: CreatorIndexRoute,
