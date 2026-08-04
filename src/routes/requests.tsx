@@ -3,6 +3,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
+import { useFriendActions, useFriendRequests } from "@/lib/data";
 
 export const Route = createFileRoute("/requests")({
   head: () => ({
@@ -17,8 +18,14 @@ export const Route = createFileRoute("/requests")({
 });
 
 function RequestsPage() {
-  const { requests, sent, acceptRequest, declineRequest } = useFlip();
+  const { user } = useFlip();
+  const { data } = useFriendRequests(user?.id);
+  const { accept, decline } = useFriendActions(user?.id);
   const [tab, setTab] = useState<"received" | "sent">("received");
+
+  const received = data?.received ?? [];
+  const sent = data?.sent ?? [];
+  const list = tab === "received" ? received : sent;
 
   return (
     <AppShell>
@@ -33,48 +40,56 @@ function RequestsPage() {
             }`}
           >
             {t}
-            {t === "received" && requests.length > 0 && (
+            {t === "received" && received.length > 0 && (
               <span className="ml-1.5 rounded-full bg-brand-pink px-1.5 text-[10px] font-semibold">
-                {requests.length}
+                {received.length}
               </span>
             )}
-            {tab === t && <span className="bg-gradient-brand absolute inset-x-0 bottom-0 h-0.5 rounded-full" />}
           </button>
         ))}
       </div>
 
       <div className="space-y-2 p-4">
-        {(tab === "received" ? requests : sent).map((p) => (
-          <div key={p.id} className="animate-rise flex items-center gap-3 rounded-2xl bg-surface p-3">
-            <img src={p.avatar} alt={p.name} className="h-11 w-11 rounded-full object-cover" />
+        {list.map((r) => (
+          <div key={r.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">
+            <img
+              src={r.person?.avatar_url ?? undefined}
+              alt=""
+              className="h-11 w-11 rounded-full bg-surface-2 object-cover"
+            />
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-semibold">{p.name}</p>
-              <p className="truncate text-xs text-muted-foreground">
-                {tab === "received" ? "Wants to be your friend" : "Request sent"}
+              <p className="truncate text-sm font-semibold">
+                {r.person?.display_name || r.person?.username}
               </p>
+              <p className="truncate text-xs text-muted-foreground">@{r.person?.username}</p>
             </div>
             {tab === "received" ? (
-              <div className="flex gap-2">
+              <>
                 <button
-                  onClick={() => acceptRequest(p.id)}
-                  className="bg-gradient-brand rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary-foreground"
+                  onClick={() => accept.mutate(r.id)}
+                  className="bg-gradient-brand rounded-full px-4 py-1.5 text-xs font-semibold text-primary-foreground"
                 >
                   Accept
                 </button>
                 <button
-                  onClick={() => declineRequest(p.id)}
-                  className="rounded-full bg-surface-2 px-3.5 py-1.5 text-xs font-semibold text-muted-foreground"
+                  onClick={() => decline.mutate(r.id)}
+                  className="rounded-full bg-surface-2 px-3 py-1.5 text-xs text-muted-foreground"
                 >
                   Decline
                 </button>
-              </div>
+              </>
             ) : (
-              <span className="rounded-full bg-surface-2 px-3 py-1.5 text-xs text-muted-foreground">Pending</span>
+              <button
+                onClick={() => decline.mutate(r.id)}
+                className="rounded-full bg-surface-2 px-3 py-1.5 text-xs text-muted-foreground"
+              >
+                Cancel
+              </button>
             )}
           </div>
         ))}
-        {(tab === "received" ? requests : sent).length === 0 && (
-          <p className="py-12 text-center text-sm text-muted-foreground">Nothing here right now.</p>
+        {list.length === 0 && (
+          <p className="py-12 text-center text-sm text-muted-foreground">Nothing here yet.</p>
         )}
       </div>
     </AppShell>
