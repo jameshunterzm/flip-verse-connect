@@ -1,151 +1,126 @@
 import {
   createContext,
+  useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from "react";
-import {
-  conversations as seedConversations,
-  incomingRequests as seedIncoming,
-  sentRequests as seedSent,
-  type Conversation,
-  type Person,
-} from "./mock";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+import type { Tables } from "@/integrations/supabase/types";
 
 export type AccountMode = "personal" | "creator";
+export type Profile = Tables<"profiles">;
+export type CreatorPage = Tables<"creator_pages">;
 
 type Store = {
+  loading: boolean;
+  session: Session | null;
+  user: User | null;
+  profile: Profile | null;
+  creatorPage: CreatorPage | null;
+  hasCreatorPage: boolean;
+  isAdmin: boolean;
   mode: AccountMode;
   setMode: (m: AccountMode) => void;
-  hasCreatorPage: boolean;
-  createCreatorPage: () => void;
-  deleteCreatorPage: () => void;
-
-  requests: Person[];
-  sent: Person[];
-  friends: Person[];
-  blocked: Person[];
-  acceptRequest: (id: string) => void;
-  declineRequest: (id: string) => void;
-  removeFriend: (id: string) => void;
-  blockFriend: (id: string) => void;
-
-  threads: Conversation[];
-  sendMessage: (threadId: string, text: string) => void;
-
-  liked: Set<string>;
-  saved: Set<string>;
-  following: Set<string>;
-  toggleLike: (id: string) => void;
-  toggleSave: (id: string) => void;
-  toggleFollow: (id: string) => void;
-
   adFrequency: number;
-  setAdFrequency: (n: number) => void;
-
-  privacy: { privateAccount: boolean; friendsOnlyComments: boolean; showOnline: boolean };
-  setPrivacy: (key: keyof Store["privacy"], value: boolean) => void;
+  refresh: () => Promise<void>;
+  signOut: () => Promise<void>;
 };
 
 const StoreContext = createContext<Store | null>(null);
 
-function toggleIn(set: Set<string>, id: string) {
-  const next = new Set(set);
-  if (next.has(id)) next.delete(id);
-  else next.add(id);
-  return next;
-}
-
 export function FlipStoreProvider({ children }: { children: ReactNode }) {
-  const [mode, setMode] = useState<AccountMode>("personal");
-  const [hasCreatorPage, setHasCreatorPage] = useState(true);
-  const [requests, setRequests] = useState<Person[]>(seedIncoming);
-  const [sent] = useState<Person[]>(seedSent);
-  const [friends, setFriends] = useState<Person[]>(
-    seedConversations.map((c) => c.person),
-  );
-  const [blocked, setBlocked] = useState<Person[]>([]);
-  const [threads, setThreads] = useState<Conversation[]>(seedConversations);
-  const [liked, setLiked] = useState<Set<string>>(new Set());
-  const [saved, setSaved] = useState<Set<string>>(new Set());
-  const [following, setFollowing] = useState<Set<string>>(new Set(["c2"]));
-  const [adFrequency, setAdFrequency] = useState(5);
-  const [privacy, setPrivacyState] = useState({
-    privateAccount: true,
-    friendsOnlyComments: true,
-    showOnline: true,
-  });
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [creatorPage, setCreatorPage] = useState<CreatorPage | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adFrequency, setAdFrequency] = useState(6);
+  const [mode, setModeState] = useState<AccountMode>("personal");
+
+  const loadFor = useCallback(async (userId: string | undefined) => {
+    if (!userId) {
+      setProfile(null);
+      setCreatorPage(null);
+      setIsAdmin(false);
+      setModeState("personal");
+      return;
+    }
+    const [profileRes, pageRes, roleRes] = await Promise.all([
+      supabase.from("profiles").select("*").eq("id", userId).maybeSingle(),
+      supabase.from("creator_pages").select("*").eq("owner_id", userId).maybeSingle(),
+      supabase.from("user_roles").select("role").eq("user_id", userId),
+    ]);
+    setProfile(profileRes.data ?? null);
+    setCreatorPage(pageRes.data ?? null);
+    setIsAdmin((roleRes.data ?? []).some((r) => r.role === "admin"));
+    if (!pageRes.data) setModeState("personal");
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+      if (!active) return;
+      setSession(next);
+      if (event === "SIGNED_OUT") {
+        void loadFor(undefined);
+        queryClient.clear();
+      }
+    });
+
+    void (async () => {
+      const { data } = await supabase.auth.getSession();
+      if (!active) return;
+      setSession(data.session);
+      await loadFor(data.session?.user.id);
+      const { data: settings } = await supabase
+        .from("platform_settings")
+        .select("ad_frequency")
+        .maybeSingle();
+      if (settings?.ad_frequency) setAdFrequency(settings.ad_frequency);
+      if (active) setLoading(false);
+    })();
+
+    return () => {
+      active = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [loadFor, queryClient]);
+
+  const userId = session?.user.id;
+  useEffect(() => {
+    if (userId) void loadFor(userId);
+  }, [userId, loadFor]);
+
+  const refresh = useCallback(async () => {
+    await loadFor(session?.user.id);
+  }, [loadFor, session]);
 
   const value = useMemo<Store>(
     () => ({
-      mode,
-      setMode,
-      hasCreatorPage,
-      createCreatorPage: () => setHasCreatorPage(true),
-      deleteCreatorPage: () => {
-        setHasCreatorPage(false);
-        setMode("personal");
-      },
-      requests,
-      sent,
-      friends,
-      blocked,
-      acceptRequest: (id) => {
-        const person = requests.find((r) => r.id === id);
-        setRequests((r) => r.filter((x) => x.id !== id));
-        if (person && !friends.some((f) => f.id === person.id)) {
-          setFriends((f) => [...f, person]);
-          setThreads((t) => [
-            ...t,
-            { id: `t-${person.id}`, person, online: false, typing: false, messages: [] },
-          ]);
-        }
-      },
-      declineRequest: (id) => setRequests((r) => r.filter((x) => x.id !== id)),
-      removeFriend: (id) => {
-        setFriends((f) => f.filter((x) => x.id !== id));
-        setThreads((t) => t.filter((x) => x.person.id !== id));
-      },
-      blockFriend: (id) => {
-        const person = friends.find((f) => f.id === id);
-        setFriends((f) => f.filter((x) => x.id !== id));
-        setThreads((t) => t.filter((x) => x.person.id !== id));
-        if (person) setBlocked((b) => [...b, person]);
-      },
-      threads,
-      sendMessage: (threadId, text) =>
-        setThreads((t) =>
-          t.map((thread) =>
-            thread.id === threadId
-              ? {
-                  ...thread,
-                  messages: [
-                    ...thread.messages,
-                    {
-                      id: `m${thread.messages.length + 1}-${Date.now()}`,
-                      from: "me" as const,
-                      text,
-                      time: "now",
-                      read: false,
-                    },
-                  ],
-                }
-              : thread,
-          ),
-        ),
-      liked,
-      saved,
-      following,
-      toggleLike: (id) => setLiked((s) => toggleIn(s, id)),
-      toggleSave: (id) => setSaved((s) => toggleIn(s, id)),
-      toggleFollow: (id) => setFollowing((s) => toggleIn(s, id)),
+      loading,
+      session,
+      user: session?.user ?? null,
+      profile,
+      creatorPage,
+      hasCreatorPage: !!creatorPage,
+      isAdmin,
+      mode: creatorPage ? mode : "personal",
+      setMode: (m) => setModeState(creatorPage ? m : "personal"),
       adFrequency,
-      setAdFrequency,
-      privacy,
-      setPrivacy: (key, val) => setPrivacyState((p) => ({ ...p, [key]: val })),
+      refresh,
+      signOut: async () => {
+        await supabase.auth.signOut();
+        queryClient.clear();
+      },
     }),
-    [mode, hasCreatorPage, requests, sent, friends, blocked, threads, liked, saved, following, adFrequency, privacy],
+    [loading, session, profile, creatorPage, isAdmin, mode, adFrequency, refresh, queryClient],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
