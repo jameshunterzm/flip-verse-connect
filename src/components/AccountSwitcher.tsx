@@ -9,14 +9,14 @@ export function AccountSwitcher({
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
-  const { mode, setMode, hasCreatorPage, createCreatorPage } = useFlip();
+  const { mode, setMode, hasCreatorPage, isAdmin, signOut } = useFlip();
   const navigate = useNavigate();
   if (!open) return null;
 
   const close = () => onOpenChange(false);
   const go = (to: string) => {
     close();
-    navigate({ to });
+    void navigate({ to });
   };
 
   return (
@@ -50,45 +50,41 @@ export function AccountSwitcher({
           </span>
         </button>
 
-        {hasCreatorPage ? (
-          <button
-            onClick={() => {
-              setMode("creator");
-              go("/creator");
-            }}
-            className={`mb-2 flex w-full items-center gap-3 rounded-2xl bg-surface-2 p-3 text-left ${
-              mode === "creator" ? "ring-brand" : ""
-            }`}
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-pink text-primary-foreground">
-              <Star className="h-5 w-5" />
+        <button
+          onClick={() => {
+            if (hasCreatorPage) setMode("creator");
+            go("/creator");
+          }}
+          className={`mb-2 flex w-full items-center gap-3 rounded-2xl p-3 text-left ${
+            hasCreatorPage
+              ? `bg-surface-2 ${mode === "creator" ? "ring-brand" : ""}`
+              : "border border-dashed border-border"
+          }`}
+        >
+          <span className="grid h-10 w-10 place-items-center rounded-full bg-brand-pink text-primary-foreground">
+            <Star className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-sm font-semibold">
+              {hasCreatorPage ? "Creator Page" : "Create your Creator Page"}
             </span>
-            <span>
-              <span className="block text-sm font-semibold">Creator Page</span>
-              <span className="block text-xs text-muted-foreground">Public. Grow &amp; earn.</span>
-            </span>
-          </button>
-        ) : (
-          <button
-            onClick={() => {
-              createCreatorPage();
-              setMode("creator");
-              go("/creator");
-            }}
-            className="mb-2 flex w-full items-center gap-3 rounded-2xl border border-dashed border-border p-3 text-left text-sm font-medium"
-          >
-            <span className="grid h-10 w-10 place-items-center rounded-full bg-surface-2">
-              <Star className="h-5 w-5 text-brand-pink" />
-            </span>
-            Create your Creator Page
-          </button>
-        )}
+            <span className="block text-xs text-muted-foreground">Public. Grow &amp; earn.</span>
+          </span>
+        </button>
 
         <div className="mt-2 space-y-1 border-t border-border pt-2 text-sm">
-          <Row icon={Settings} label="Manage Creator Page" onClick={() => go("/creator/dashboard")} accent />
-          <Row icon={Shield} label="Admin Dashboard" onClick={() => go("/admin")} />
+          {hasCreatorPage && (
+            <Row icon={Settings} label="Manage Creator Page" onClick={() => go("/creator/dashboard")} accent />
+          )}
+          {isAdmin && <Row icon={Shield} label="Admin Dashboard" onClick={() => go("/admin")} />}
           <Row icon={Settings} label="Settings" onClick={() => go("/settings")} />
-          <Row icon={LogOut} label="Log out" onClick={() => go("/auth")} />
+          <Row
+            icon={LogOut}
+            label="Log out"
+            onClick={() => {
+              void signOut().then(() => go("/auth"));
+            }}
+          />
         </div>
       </div>
     </div>

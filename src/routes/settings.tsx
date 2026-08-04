@@ -1,8 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Bell, Ban, Lock, Eye, Shield, LogOut, ChevronRight, Star } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
+import { useBlocked, useFriendActions } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -17,7 +19,25 @@ export const Route = createFileRoute("/settings")({
 });
 
 function SettingsPage() {
-  const { privacy, setPrivacy, blocked, hasCreatorPage, deleteCreatorPage } = useFlip();
+  const { user, profile, creatorPage, hasCreatorPage, isAdmin, refresh, signOut } = useFlip();
+  const { data: blocked = [] } = useBlocked(user?.id);
+  const { unblock } = useFriendActions(user?.id);
+  const navigate = useNavigate();
+
+  const setPrivacy = async (key: "private_account" | "friends_only_comments" | "show_online", value: boolean) => {
+    if (!user) return;
+    await supabase
+      .from("profiles")
+      .update(
+        key === "private_account"
+          ? { private_account: value }
+          : key === "friends_only_comments"
+            ? { friends_only_comments: value }
+            : { show_online: value },
+      )
+      .eq("id", user.id);
+    await refresh();
+  };
 
   return (
     <AppShell>
@@ -28,22 +48,22 @@ function SettingsPage() {
             icon={Lock}
             label="Private account"
             sub="Only accepted friends see your posts"
-            value={privacy.privateAccount}
-            onChange={(v) => setPrivacy("privateAccount", v)}
+            value={profile?.private_account ?? true}
+            onChange={(v) => void setPrivacy("private_account", v)}
           />
           <Toggle
             icon={Eye}
             label="Friends-only comments"
             sub="Limit comments on personal posts"
-            value={privacy.friendsOnlyComments}
-            onChange={(v) => setPrivacy("friendsOnlyComments", v)}
+            value={profile?.friends_only_comments ?? true}
+            onChange={(v) => void setPrivacy("friends_only_comments", v)}
           />
           <Toggle
             icon={Bell}
             label="Show online status"
             sub="Friends can see when you're active"
-            value={privacy.showOnline}
-            onChange={(v) => setPrivacy("showOnline", v)}
+            value={profile?.show_online ?? true}
+            onChange={(v) => void setPrivacy("show_online", v)}
           />
         </Group>
 
@@ -53,42 +73,53 @@ function SettingsPage() {
           ) : (
             blocked.map((b) => (
               <div key={b.id} className="flex items-center gap-3 px-3 py-3">
-                <img src={b.avatar} alt={b.name} className="h-9 w-9 rounded-full object-cover" />
-                <p className="flex-1 text-sm">{b.name}</p>
-                <Ban className="h-4 w-4 text-destructive" />
+                <img src={b.avatar_url ?? undefined} alt="" className="h-9 w-9 rounded-full bg-surface-2 object-cover" />
+                <p className="flex-1 text-sm">{b.display_name || b.username}</p>
+                <button onClick={() => unblock.mutate(b.id)} className="text-xs text-brand-cyan">
+                  Unblock
+                </button>
               </div>
             ))
           )}
         </Group>
 
         <Group title="Creator">
-          <Link to="/creator/dashboard" className="flex items-center gap-3 px-3 py-3.5 text-sm">
+          <Link to="/creator" className="flex items-center gap-3 px-3 py-3.5 text-sm">
             <Star className="h-4 w-4 text-brand-pink" />
-            <span className="flex-1">Manage Creator Page</span>
+            <span className="flex-1">{hasCreatorPage ? "Manage Creator Page" : "Create Creator Page"}</span>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
           </Link>
-          {hasCreatorPage && (
-            <button onClick={deleteCreatorPage} className="flex w-full items-center gap-3 px-3 py-3.5 text-sm text-destructive">
+          {hasCreatorPage && creatorPage && (
+            <button
+              onClick={async () => {
+                if (!window.confirm("Delete your Creator Page? Public posts will be removed.")) return;
+                await supabase.from("creator_pages").delete().eq("id", creatorPage.id);
+                await refresh();
+              }}
+              className="flex w-full items-center gap-3 px-3 py-3.5 text-sm text-destructive"
+            >
               <Ban className="h-4 w-4" />
               <span className="flex-1 text-left">Delete Creator Page</span>
             </button>
           )}
         </Group>
 
-        <Group title="Admin">
-          <Link to="/admin" className="flex items-center gap-3 px-3 py-3.5 text-sm">
-            <Shield className="h-4 w-4 text-brand-cyan" />
-            <span className="flex-1">Admin dashboard</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          </Link>
-        </Group>
+        {isAdmin && (
+          <Group title="Admin">
+            <Link to="/admin" className="flex items-center gap-3 px-3 py-3.5 text-sm">
+              <Shield className="h-4 w-4 text-brand-cyan" />
+              <span className="flex-1">Admin dashboard</span>
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </Link>
+          </Group>
+        )}
 
-        <Link
-          to="/auth"
-          className="flex items-center justify-center gap-2 rounded-2xl bg-surface py-3.5 text-sm font-medium text-destructive"
+        <button
+          onClick={() => void signOut().then(() => navigate({ to: "/auth" }))}
+          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-surface py-3.5 text-sm font-medium text-destructive"
         >
           <LogOut className="h-4 w-4" /> Log out
-        </Link>
+        </button>
       </div>
     </AppShell>
   );
@@ -117,23 +148,23 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <button onClick={() => onChange(!value)} className="flex w-full items-center gap-3 px-3 py-3.5 text-left">
+    <div className="flex items-center gap-3 px-3 py-3.5">
       <Icon className="h-4 w-4 text-muted-foreground" />
-      <span className="flex-1">
-        <span className="block text-sm">{label}</span>
-        <span className="block text-xs text-muted-foreground">{sub}</span>
-      </span>
-      <span
-        className={`relative h-6 w-11 rounded-full transition-colors ${
-          value ? "bg-gradient-brand" : "bg-surface-2"
-        }`}
+      <div className="flex-1">
+        <p className="text-sm">{label}</p>
+        <p className="text-xs text-muted-foreground">{sub}</p>
+      </div>
+      <button
+        role="switch"
+        aria-checked={value}
+        aria-label={label}
+        onClick={() => onChange(!value)}
+        className={`h-6 w-11 rounded-full p-0.5 transition-colors ${value ? "bg-gradient-brand" : "bg-surface-2"}`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-all ${
-            value ? "left-[1.375rem]" : "left-0.5"
-          }`}
+          className={`block h-5 w-5 rounded-full bg-white transition-transform ${value ? "translate-x-5" : ""}`}
         />
-      </span>
-    </button>
+      </button>
+    </div>
   );
 }
