@@ -19,6 +19,7 @@ import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RequestsRouteImport } from './routes/requests'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CHandleRouteImport } from './routes/c.$handle'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as CreatorIndexRouteImport } from './routes/creator.index'
 import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
@@ -73,6 +74,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CHandleRoute = CHandleRouteImport.update({
+  id: '/c/$handle',
+  path: '/c/$handle',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatThreadIdRoute = ChatThreadIdRouteImport.update({
   id: '/chat/$threadId',
   path: '/chat/$threadId',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
+  '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator/': typeof CreatorIndexRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
+  '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator': typeof CreatorIndexRoute
@@ -131,6 +139,7 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
   '/settings': typeof SettingsRoute
+  '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
   '/creator/': typeof CreatorIndexRoute
@@ -148,6 +157,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/requests'
     | '/settings'
+    | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator/'
@@ -163,6 +173,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/requests'
     | '/settings'
+    | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator'
@@ -178,6 +189,7 @@ export interface FileRouteTypes {
     | '/profile'
     | '/requests'
     | '/settings'
+    | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
     | '/creator/'
@@ -194,6 +206,7 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   RequestsRoute: typeof RequestsRoute
   SettingsRoute: typeof SettingsRoute
+  CHandleRoute: typeof CHandleRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   CreatorDashboardRoute: typeof CreatorDashboardRoute
   CreatorIndexRoute: typeof CreatorIndexRoute
@@ -271,6 +284,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/c/$handle': {
+      id: '/c/$handle'
+      path: '/c/$handle'
+      fullPath: '/c/$handle'
+      preLoaderRoute: typeof CHandleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/chat/$threadId': {
       id: '/chat/$threadId'
       path: '/chat/$threadId'
@@ -306,6 +326,7 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   RequestsRoute: RequestsRoute,
   SettingsRoute: SettingsRoute,
+  CHandleRoute: CHandleRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   CreatorDashboardRoute: CreatorDashboardRoute,
   CreatorIndexRoute: CreatorIndexRoute,
