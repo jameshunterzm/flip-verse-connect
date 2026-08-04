@@ -26,7 +26,16 @@ function SettingsPage() {
 
   const setPrivacy = async (key: "private_account" | "friends_only_comments" | "show_online", value: boolean) => {
     if (!user) return;
-    await supabase.from("profiles").update({ [key]: value }).eq("id", user.id);
+    await supabase
+      .from("profiles")
+      .update(
+        key === "private_account"
+          ? { private_account: value }
+          : key === "friends_only_comments"
+            ? { friends_only_comments: value }
+            : { show_online: value },
+      )
+      .eq("id", user.id);
     await refresh();
   };
 
