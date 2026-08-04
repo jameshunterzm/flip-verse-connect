@@ -1,30 +1,33 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { BarChart3, Link2, MoreHorizontal, Play, Share2, Trash2 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
-import { compact, creators, creatorVideos } from "@/lib/mock";
 import { useFlip } from "@/lib/flip-store";
+import { compact, useMyPosts, usePageStats } from "@/lib/data";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/creator/")({
   head: () => ({
     meta: [
-      { title: "Alex King — Creator Page on Flip Chat" },
-      { name: "description", content: "Public creator page with videos, followers, links and monetization." },
-      { property: "og:title", content: "Alex King on Flip Chat" },
-      { property: "og:description", content: "25.6K followers · 2.3M likes · Creating. Inspiring. Earning." },
+      { title: "My Creator Page — Flip Chat" },
+      { name: "description", content: "Your public creator page with videos, followers, links and monetization." },
+      { property: "og:title", content: "Creator Page on Flip Chat" },
+      { property: "og:description", content: "Go public, grow followers and earn from gifts and ads." },
     ],
   }),
   component: CreatorPage,
 });
 
 function CreatorPage() {
-  const me = creators[0]!;
-  const { hasCreatorPage, createCreatorPage, deleteCreatorPage } = useFlip();
-  const [tab, setTab] = useState<"videos" | "shorts" | "pinned">("videos");
+  const { user, profile, creatorPage, refresh, setMode } = useFlip();
+  const { data: stats } = usePageStats(creatorPage?.id);
+  const { data: posts = [] } = useMyPosts(user?.id, creatorPage?.id);
   const [switcher, setSwitcher] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const navigate = useNavigate();
 
-  if (!hasCreatorPage) {
+  if (!creatorPage) {
     return (
       <AppShell>
         <div className="bg-glow flex min-h-[70vh] flex-col items-center justify-center px-8 text-center">
@@ -33,10 +36,28 @@ function CreatorPage() {
             Each account can have one Creator Page. Go public, grow followers and earn.
           </p>
           <button
-            onClick={createCreatorPage}
-            className="bg-gradient-brand shadow-glow mt-6 rounded-2xl px-6 py-3 text-sm font-semibold text-primary-foreground"
+            disabled={!user || creating}
+            onClick={async () => {
+              if (!user || !profile) return;
+              setCreating(true);
+              const handle = `${profile.username}`.slice(0, 24);
+              const { error } = await supabase.from("creator_pages").insert({
+                owner_id: user.id,
+                handle,
+                name: profile.display_name || profile.username,
+                avatar_url: profile.avatar_url,
+              });
+              setCreating(false);
+              if (error) {
+                window.alert(error.message);
+                return;
+              }
+              await refresh();
+              setMode("creator");
+            }}
+            className="bg-gradient-brand shadow-glow mt-6 rounded-2xl px-6 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50"
           >
-            Create Creator Page
+            {creating ? "Creating…" : "Create Creator Page"}
           </button>
         </div>
       </AppShell>
@@ -52,30 +73,42 @@ function CreatorPage() {
           </button>
         </div>
         <div className="mt-1 flex items-center gap-4">
-          <img src={me.avatar} alt={me.name} className="h-20 w-20 rounded-full object-cover ring-2 ring-brand-pink" />
+          <img
+            src={creatorPage.avatar_url ?? undefined}
+            alt=""
+            className="h-20 w-20 rounded-full bg-surface-2 object-cover ring-2 ring-brand-pink"
+          />
           <div>
             <h1 className="flex items-center gap-1.5 text-lg font-bold">
-              {me.name} <span className="text-brand-cyan">✔</span>
+              {creatorPage.name} {creatorPage.verified && <span className="text-brand-cyan">✔</span>}
             </h1>
-            <p className="text-sm text-muted-foreground">@{me.handle}</p>
+            <p className="text-sm text-muted-foreground">@{creatorPage.handle}</p>
           </div>
         </div>
 
         <div className="mt-4 flex gap-6">
-          <Stat value="120" label="Following" />
-          <Stat value={compact(me.followers)} label="Followers" />
-          <Stat value="2.3M" label="Likes" />
+          <Stat value={compact(stats?.followers ?? 0)} label="Followers" />
+          <Stat value={compact(stats?.views ?? 0)} label="Views" />
+          <Stat value={compact(stats?.likes ?? 0)} label="Likes" />
         </div>
 
-        <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{me.bio}</p>
-        <a href="#" className="mt-1 inline-flex items-center gap-1.5 text-xs text-brand-cyan">
-          <Link2 className="h-3 w-3" /> flipchat.app/alexking
-        </a>
+        {creatorPage.bio && (
+          <p className="mt-3 whitespace-pre-line text-sm text-muted-foreground">{creatorPage.bio}</p>
+        )}
+        {creatorPage.link_url && (
+          <a href={creatorPage.link_url} className="mt-1 inline-flex items-center gap-1.5 text-xs text-brand-cyan">
+            <Link2 className="h-3 w-3" /> {creatorPage.link_url}
+          </a>
+        )}
 
         <div className="mt-4 flex gap-2">
-          <button className="bg-gradient-brand flex-1 rounded-2xl py-2.5 text-sm font-semibold text-primary-foreground">
-            Follow
-          </button>
+          <Link
+            to="/c/$handle"
+            params={{ handle: creatorPage.handle }}
+            className="bg-gradient-brand flex-1 rounded-2xl py-2.5 text-center text-sm font-semibold text-primary-foreground"
+          >
+            View public page
+          </Link>
           <Link
             to="/creator/dashboard"
             aria-label="Creator dashboard"
@@ -83,43 +116,47 @@ function CreatorPage() {
           >
             <BarChart3 className="h-4 w-4" />
           </Link>
-          <button aria-label="Share page" className="grid w-12 place-items-center rounded-2xl bg-surface">
+          <button
+            aria-label="Share page"
+            onClick={() => void navigator.clipboard.writeText(`${window.location.origin}/c/${creatorPage.handle}`)}
+            className="grid w-12 place-items-center rounded-2xl bg-surface"
+          >
             <Share2 className="h-4 w-4" />
           </button>
         </div>
 
         <button
-          onClick={deleteCreatorPage}
+          onClick={async () => {
+            if (!window.confirm("Delete this Creator Page?")) return;
+            await supabase.from("creator_pages").delete().eq("id", creatorPage.id);
+            await refresh();
+            void navigate({ to: "/profile" });
+          }}
           className="mt-3 flex items-center gap-2 text-[11px] text-destructive"
         >
           <Trash2 className="h-3 w-3" /> Delete this Creator Page
         </button>
       </div>
 
-      <div className="flex border-b border-border">
-        {(["videos", "shorts", "pinned"] as const).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`relative flex-1 py-3 text-sm capitalize ${
-              tab === t ? "font-semibold text-foreground" : "text-muted-foreground"
-            }`}
-          >
-            {t}
-            {tab === t && <span className="bg-gradient-brand absolute inset-x-6 bottom-0 h-0.5 rounded-full" />}
-          </button>
-        ))}
-      </div>
-
       <div className="grid grid-cols-3 gap-1.5 p-1.5">
-        {creatorVideos.map((v, i) => (
-          <div key={i} className="relative overflow-hidden rounded-xl">
-            <img src={v.poster} alt="" loading="lazy" className="aspect-[9/16] w-full object-cover" />
+        {posts.map((v) => (
+          <div key={v.id} className="relative overflow-hidden rounded-xl">
+            <img
+              src={v.poster_url ?? v.media_url}
+              alt=""
+              loading="lazy"
+              className="aspect-[9/16] w-full bg-surface-2 object-cover"
+            />
             <span className="absolute bottom-1 left-1.5 flex items-center gap-1 text-[10px] font-medium">
-              <Play className="h-2.5 w-2.5 fill-current" /> {v.views}
+              <Play className="h-2.5 w-2.5 fill-current" /> {compact(v.views_count)}
             </span>
           </div>
         ))}
+        {posts.length === 0 && (
+          <p className="col-span-3 py-12 text-center text-sm text-muted-foreground">
+            No public posts yet — tap + to upload.
+          </p>
+        )}
       </div>
 
       <AccountSwitcher open={switcher} onOpenChange={setSwitcher} />
