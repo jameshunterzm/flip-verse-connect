@@ -2,9 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { FeedCard } from "@/components/FeedCard";
-import { buildFeed } from "@/lib/mock";
+import { AdCard, FeedCard } from "@/components/FeedCard";
 import { useFlip } from "@/lib/flip-store";
+import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -18,19 +18,41 @@ export const Route = createFileRoute("/")({
       { property: "og:title", content: "Flip Chat — Flip Between Friends. Flip Into Fame." },
       {
         property: "og:description",
-        content: "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from.",
+        content:
+          "Flip Chat is a short video and social app with a private Personal Account and a public Creator Page you can earn from.",
       },
     ],
   }),
   component: FeedPage,
 });
 
-const tabs = ["For You", "Following", "Trending"] as const;
+const tabs = ["For You", "Friends"] as const;
+
+type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad };
 
 function FeedPage() {
-  const { adFrequency } = useFlip();
+  const { adFrequency, user } = useFlip();
   const [tab, setTab] = useState<(typeof tabs)[number]>("For You");
-  const feed = useMemo(() => buildFeed(adFrequency), [adFrequency]);
+  const [activeIndex, setActiveIndex] = useState(0);
+
+  const publicFeed = usePublicFeed(user?.id);
+  const friendsFeed = useFriendsFeed(user?.id);
+  const { data: ads = [] } = useApprovedAds();
+
+  const items = useMemo<Item[]>(() => {
+    const posts = (tab === "For You" ? publicFeed.data : friendsFeed.data) ?? [];
+    const out: Item[] = [];
+    posts.forEach((post, i) => {
+      out.push({ type: "post", post });
+      // Ads never appear in the private friends feed.
+      if (tab === "For You" && ads.length && (i + 1) % adFrequency === 0) {
+        out.push({ type: "ad", ad: ads[Math.floor(i / adFrequency) % ads.length]! });
+      }
+    });
+    return out;
+  }, [tab, publicFeed.data, friendsFeed.data, ads, adFrequency]);
+
+  const loading = tab === "For You" ? publicFeed.isLoading : friendsFeed.isLoading;
 
   return (
     <AppShell dark>
@@ -48,9 +70,8 @@ function FeedPage() {
           </button>
         ))}
         <div className="ml-auto flex items-center gap-3">
-          <Link to="/notifications" aria-label="Notifications" className="relative">
+          <Link to="/notifications" aria-label="Notifications">
             <Bell className="h-5 w-5" />
-            <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-brand-pink" />
           </Link>
           <Link to="/discover" aria-label="Search">
             <Search className="h-5 w-5" />
@@ -58,10 +79,26 @@ function FeedPage() {
         </div>
       </header>
 
-      <div className="snap-feed no-scrollbar h-dvh overflow-y-scroll">
-        {feed.map((item) => (
-          <FeedCard key={item.id} item={item} />
-        ))}
+      <div
+        className="snap-feed no-scrollbar h-dvh overflow-y-scroll"
+        onScroll={(e) => setActiveIndex(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
+      >
+        {items.map((item, i) =>
+          item.type === "ad" ? (
+            <AdCard key={`ad-${item.ad.id}-${i}`} ad={item.ad} active={i === activeIndex} />
+          ) : (
+            <FeedCard key={item.post.id} post={item.post} active={i === activeIndex} />
+          ),
+        )}
+        {items.length === 0 && (
+          <div className="grid h-dvh place-items-center px-8 text-center text-sm text-muted-foreground">
+            {loading
+              ? "Loading your feed…"
+              : tab === "Friends"
+                ? "No friend posts yet. Add friends to see their private posts here."
+                : "No public clips yet. Be the first to post from a Creator Page."}
+          </div>
+        )}
       </div>
     </AppShell>
   );
