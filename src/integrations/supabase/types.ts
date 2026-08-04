@@ -14,16 +14,558 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      ads: {
+        Row: {
+          advertiser: string
+          allow_engagement: boolean
+          created_at: string
+          cta_label: string
+          cta_url: string
+          id: string
+          impressions: number
+          media_url: string
+          poster_url: string | null
+          status: Database["public"]["Enums"]["ad_status"]
+          title: string
+        }
+        Insert: {
+          advertiser: string
+          allow_engagement?: boolean
+          created_at?: string
+          cta_label?: string
+          cta_url: string
+          id?: string
+          impressions?: number
+          media_url: string
+          poster_url?: string | null
+          status?: Database["public"]["Enums"]["ad_status"]
+          title: string
+        }
+        Update: {
+          advertiser?: string
+          allow_engagement?: boolean
+          created_at?: string
+          cta_label?: string
+          cta_url?: string
+          id?: string
+          impressions?: number
+          media_url?: string
+          poster_url?: string | null
+          status?: Database["public"]["Enums"]["ad_status"]
+          title?: string
+        }
+        Relationships: []
+      }
+      blocks: {
+        Row: {
+          blocked_id: string
+          blocker_id: string
+          created_at: string
+        }
+        Insert: {
+          blocked_id: string
+          blocker_id: string
+          created_at?: string
+        }
+        Update: {
+          blocked_id?: string
+          blocker_id?: string
+          created_at?: string
+        }
+        Relationships: []
+      }
+      comments: {
+        Row: {
+          body: string
+          created_at: string
+          id: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          created_at?: string
+          id?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          id?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      creator_pages: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          cover_url: string | null
+          created_at: string
+          featured: boolean
+          handle: string
+          id: string
+          link_url: string | null
+          name: string
+          owner_id: string
+          suspended: boolean
+          updated_at: string
+          verified: boolean
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string
+          featured?: boolean
+          handle: string
+          id?: string
+          link_url?: string | null
+          name: string
+          owner_id: string
+          suspended?: boolean
+          updated_at?: string
+          verified?: boolean
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          cover_url?: string | null
+          created_at?: string
+          featured?: boolean
+          handle?: string
+          id?: string
+          link_url?: string | null
+          name?: string
+          owner_id?: string
+          suspended?: boolean
+          updated_at?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      follows: {
+        Row: {
+          created_at: string
+          follower_id: string
+          page_id: string
+        }
+        Insert: {
+          created_at?: string
+          follower_id: string
+          page_id: string
+        }
+        Update: {
+          created_at?: string
+          follower_id?: string
+          page_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "follows_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "creator_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      friend_requests: {
+        Row: {
+          created_at: string
+          from_user: string
+          id: string
+          status: Database["public"]["Enums"]["request_status"]
+          to_user: string
+        }
+        Insert: {
+          created_at?: string
+          from_user: string
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          to_user: string
+        }
+        Update: {
+          created_at?: string
+          from_user?: string
+          id?: string
+          status?: Database["public"]["Enums"]["request_status"]
+          to_user?: string
+        }
+        Relationships: []
+      }
+      friendships: {
+        Row: {
+          created_at: string
+          friend_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          audio_url: string | null
+          body: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          read_at: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Insert: {
+          audio_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          read_at?: string | null
+          recipient_id: string
+          sender_id: string
+        }
+        Update: {
+          audio_url?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          read_at?: string | null
+          recipient_id?: string
+          sender_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          actor_id: string | null
+          body: string
+          created_at: string
+          id: string
+          kind: string
+          post_id: string | null
+          read: boolean
+          user_id: string
+        }
+        Insert: {
+          actor_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          kind: string
+          post_id?: string | null
+          read?: boolean
+          user_id: string
+        }
+        Update: {
+          actor_id?: string | null
+          body?: string
+          created_at?: string
+          id?: string
+          kind?: string
+          post_id?: string | null
+          read?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      platform_settings: {
+        Row: {
+          ad_frequency: number
+          ad_revenue_share: number
+          gift_revenue_share: number
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          ad_frequency?: number
+          ad_revenue_share?: number
+          gift_revenue_share?: number
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          ad_frequency?: number
+          ad_revenue_share?: number
+          gift_revenue_share?: number
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      post_likes: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_likes_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_saves: {
+        Row: {
+          created_at: string
+          post_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          post_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          post_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_saves_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      posts: {
+        Row: {
+          author_id: string
+          caption: string | null
+          created_at: string
+          creator_page_id: string | null
+          duration_seconds: number | null
+          format: Database["public"]["Enums"]["video_format"] | null
+          hashtags: string[]
+          id: string
+          kind: Database["public"]["Enums"]["post_kind"]
+          media_url: string
+          poster_url: string | null
+          removed: boolean
+          trim_end: number | null
+          trim_start: number
+          views_count: number
+          visibility: Database["public"]["Enums"]["post_visibility"]
+        }
+        Insert: {
+          author_id: string
+          caption?: string | null
+          created_at?: string
+          creator_page_id?: string | null
+          duration_seconds?: number | null
+          format?: Database["public"]["Enums"]["video_format"] | null
+          hashtags?: string[]
+          id?: string
+          kind?: Database["public"]["Enums"]["post_kind"]
+          media_url: string
+          poster_url?: string | null
+          removed?: boolean
+          trim_end?: number | null
+          trim_start?: number
+          views_count?: number
+          visibility?: Database["public"]["Enums"]["post_visibility"]
+        }
+        Update: {
+          author_id?: string
+          caption?: string | null
+          created_at?: string
+          creator_page_id?: string | null
+          duration_seconds?: number | null
+          format?: Database["public"]["Enums"]["video_format"] | null
+          hashtags?: string[]
+          id?: string
+          kind?: Database["public"]["Enums"]["post_kind"]
+          media_url?: string
+          poster_url?: string | null
+          removed?: boolean
+          trim_end?: number | null
+          trim_start?: number
+          views_count?: number
+          visibility?: Database["public"]["Enums"]["post_visibility"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "posts_creator_page_id_fkey"
+            columns: ["creator_page_id"]
+            isOneToOne: false
+            referencedRelation: "creator_pages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          display_name: string
+          friends_only_comments: boolean
+          id: string
+          last_seen: string
+          private_account: boolean
+          show_online: boolean
+          suspended: boolean
+          updated_at: string
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          friends_only_comments?: boolean
+          id: string
+          last_seen?: string
+          private_account?: boolean
+          show_online?: boolean
+          suspended?: boolean
+          updated_at?: string
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          display_name?: string
+          friends_only_comments?: boolean
+          id?: string
+          last_seen?: string
+          private_account?: boolean
+          show_online?: boolean
+          suspended?: boolean
+          updated_at?: string
+          username?: string
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          post_id: string | null
+          reason: string
+          reported_user: string | null
+          reporter_id: string
+          resolved: boolean
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reason: string
+          reported_user?: string | null
+          reporter_id: string
+          resolved?: boolean
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          post_id?: string | null
+          reason?: string
+          reported_user?: string | null
+          reporter_id?: string
+          resolved?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      accept_friend_request: {
+        Args: { _request_id: string }
+        Returns: undefined
+      }
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
+      increment_post_view: { Args: { _post_id: string }; Returns: undefined }
+      post_visible: { Args: { _post_id: string }; Returns: boolean }
+      remove_friend: { Args: { _other: string }; Returns: undefined }
     }
     Enums: {
-      [_ in never]: never
+      ad_status: "pending" | "approved" | "rejected"
+      app_role: "admin" | "moderator" | "user"
+      post_kind: "clip" | "image"
+      post_visibility: "friends" | "public"
+      request_status: "pending" | "accepted" | "declined"
+      video_format: "short" | "long"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +692,13 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      ad_status: ["pending", "approved", "rejected"],
+      app_role: ["admin", "moderator", "user"],
+      post_kind: ["clip", "image"],
+      post_visibility: ["friends", "public"],
+      request_status: ["pending", "accepted", "declined"],
+      video_format: ["short", "long"],
+    },
   },
 } as const
