@@ -1,9 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, TrendingUp } from "lucide-react";
+import { Search, TrendingUp, UserPlus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { ads, clips, compact, creatorById, creators, trendingHashtags } from "@/lib/mock";
 import { useFlip } from "@/lib/flip-store";
+import {
+  compact,
+  useApprovedAds,
+  useCreatorPages,
+  useFollowing,
+  useFriendActions,
+  usePublicFeed,
+  useSearchPeople,
+  useToggleFollow,
+} from "@/lib/data";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
@@ -20,26 +29,27 @@ export const Route = createFileRoute("/discover")({
   component: DiscoverPage,
 });
 
-const filters = ["Top", "Creators", "Videos", "Hashtags"] as const;
+const filters = ["Top", "Creators", "People", "Videos", "Hashtags"] as const;
 
 function DiscoverPage() {
+  const { user } = useFlip();
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<(typeof filters)[number]>("Top");
-  const { following, toggleFollow } = useFlip();
 
-  const matchCreators = creators.filter(
-    (c) =>
-      !q ||
-      c.name.toLowerCase().includes(q.toLowerCase()) ||
-      c.handle.toLowerCase().includes(q.toLowerCase()),
+  const { data: pages = [] } = useCreatorPages(q);
+  const { data: people = [] } = useSearchPeople(q, user?.id);
+  const { data: posts = [] } = usePublicFeed(user?.id);
+  const { data: ads = [] } = useApprovedAds();
+  const { data: following } = useFollowing(user?.id);
+  const follow = useToggleFollow(user?.id);
+  const { sendRequest } = useFriendActions(user?.id);
+
+  const needle = q.toLowerCase().replace("#", "");
+  const matchClips = posts.filter(
+    (p) => !q || (p.caption ?? "").toLowerCase().includes(needle) || p.hashtags.some((h) => h.includes(needle)),
   );
-  const matchClips = clips.filter(
-    (v) =>
-      !q ||
-      v.caption.toLowerCase().includes(q.toLowerCase()) ||
-      v.hashtags.some((h) => h.includes(q.toLowerCase().replace("#", ""))),
-  );
-  const matchTags = trendingHashtags.filter((t) => !q || t.tag.includes(q.toLowerCase().replace("#", "")));
+  const tags = [...new Set(posts.flatMap((p) => p.hashtags))].filter((t) => !q || t.includes(needle)).slice(0, 20);
+  const ad = ads[0];
 
   return (
     <AppShell>
@@ -70,17 +80,20 @@ function DiscoverPage() {
       </div>
 
       <div className="space-y-6 px-4 py-4">
-        {(filter === "Top" || filter === "Hashtags") && (
+        {(filter === "Top" || filter === "Hashtags") && tags.length > 0 && (
           <section>
             <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold">
               <TrendingUp className="h-4 w-4 text-brand-cyan" /> Trending hashtags
             </h2>
             <div className="flex flex-wrap gap-2">
-              {matchTags.map((t) => (
-                <span key={t.tag} className="rounded-full bg-surface px-3 py-1.5 text-xs">
-                  <span className="text-brand-cyan">#{t.tag}</span>
-                  <span className="ml-1.5 text-muted-foreground">{t.posts}</span>
-                </span>
+              {tags.map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setQ(`#${t}`)}
+                  className="rounded-full bg-surface px-3 py-1.5 text-xs text-brand-cyan"
+                >
+                  #{t}
+                </button>
               ))}
             </div>
           </section>
@@ -88,53 +101,84 @@ function DiscoverPage() {
 
         {(filter === "Top" || filter === "Creators") && (
           <section>
-            <h2 className="mb-2 text-sm font-semibold">Suggested creators</h2>
+            <h2 className="mb-2 text-sm font-semibold">Creators</h2>
             <div className="space-y-2">
-              {matchCreators.map((c) => (
+              {pages.map((c) => (
                 <div key={c.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">
-                  <img src={c.avatar} alt={c.name} className="h-11 w-11 rounded-full object-cover" />
+                  <Link to="/c/$handle" params={{ handle: c.handle }} className="shrink-0">
+                    <img src={c.avatar_url ?? undefined} alt="" className="h-11 w-11 rounded-full bg-surface-2 object-cover" />
+                  </Link>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">
                       {c.name} {c.verified && <span className="text-brand-cyan">✔</span>}
                     </p>
-                    <p className="truncate text-xs text-muted-foreground">
-                      @{c.handle} · {compact(c.followers)} followers
-                    </p>
+                    <p className="truncate text-xs text-muted-foreground">@{c.handle}</p>
                   </div>
-                  <button
-                    onClick={() => toggleFollow(c.id)}
-                    className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
-                      following.has(c.id)
-                        ? "bg-surface-2 text-muted-foreground"
-                        : "bg-gradient-brand text-primary-foreground"
-                    }`}
-                  >
-                    {following.has(c.id) ? "Following" : "Follow"}
-                  </button>
+                  {c.owner_id !== user?.id && (
+                    <button
+                      onClick={() =>
+                        follow.mutate({ pageId: c.id, ownerId: c.owner_id, following: !!following?.has(c.id) })
+                      }
+                      className={`rounded-full px-4 py-1.5 text-xs font-semibold ${
+                        following?.has(c.id)
+                          ? "bg-surface-2 text-muted-foreground"
+                          : "bg-gradient-brand text-primary-foreground"
+                      }`}
+                    >
+                      {following?.has(c.id) ? "Following" : "Follow"}
+                    </button>
+                  )}
                 </div>
               ))}
+              {pages.length === 0 && <p className="text-sm text-muted-foreground">No creator pages found.</p>}
             </div>
           </section>
         )}
 
-        <section>
-          <h2 className="mb-2 text-sm font-semibold">Sponsored</h2>
-          <Link to="/" className="block overflow-hidden rounded-2xl bg-surface">
-            <div className="relative">
-              <img src={ads[0]!.poster} alt={ads[0]!.caption} loading="lazy" className="h-40 w-full object-cover" />
-              <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-widest">
-                Sponsored
-              </span>
+        {(filter === "People" || (filter === "Top" && people.length > 0)) && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold">People</h2>
+            <div className="space-y-2">
+              {people.map((p) => (
+                <div key={p.id} className="flex items-center gap-3 rounded-2xl bg-surface p-3">
+                  <img src={p.avatar_url ?? undefined} alt="" className="h-11 w-11 rounded-full bg-surface-2 object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{p.display_name || p.username}</p>
+                    <p className="truncate text-xs text-muted-foreground">@{p.username}</p>
+                  </div>
+                  <button
+                    onClick={() => sendRequest.mutate(p.id)}
+                    className="bg-gradient-brand flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold text-primary-foreground"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" /> Add
+                  </button>
+                </div>
+              ))}
+              {people.length === 0 && <p className="text-sm text-muted-foreground">Search a username to add friends.</p>}
             </div>
-            <div className="p-3">
-              <p className="text-sm font-semibold">{ads[0]!.advertiser}</p>
-              <p className="text-xs text-muted-foreground">{ads[0]!.caption}</p>
-              <span className="bg-gradient-brand mt-2 inline-block rounded-full px-3 py-1.5 text-xs font-semibold text-primary-foreground">
-                {ads[0]!.cta}
-              </span>
-            </div>
-          </Link>
-        </section>
+          </section>
+        )}
+
+        {ad && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold">Sponsored</h2>
+            <a href={ad.cta_url} target="_blank" rel="noreferrer noopener" className="block overflow-hidden rounded-2xl bg-surface">
+              <div className="relative">
+                <img src={ad.poster_url ?? ad.media_url} alt={ad.title} loading="lazy" className="h-40 w-full object-cover" />
+                <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-widest">
+                  Sponsored
+                </span>
+              </div>
+              <div className="p-3">
+                <p className="text-sm font-semibold">{ad.advertiser}</p>
+                <p className="text-xs text-muted-foreground">{ad.title}</p>
+                <span className="bg-gradient-brand mt-2 inline-block rounded-full px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                  {ad.cta_label}
+                </span>
+              </div>
+            </a>
+          </section>
+        )}
 
         {(filter === "Top" || filter === "Videos") && (
           <section>
@@ -142,15 +186,20 @@ function DiscoverPage() {
             <div className="grid grid-cols-3 gap-1.5">
               {matchClips.map((v) => (
                 <Link key={v.id} to="/" className="relative overflow-hidden rounded-xl">
-                  <img src={v.poster} alt={v.caption} loading="lazy" className="aspect-[9/16] w-full object-cover" />
+                  <img
+                    src={v.poster_url ?? v.media_url}
+                    alt={v.caption ?? ""}
+                    loading="lazy"
+                    className="aspect-[9/16] w-full bg-surface-2 object-cover"
+                  />
                   <span className="absolute bottom-1 left-1.5 text-[10px] font-medium">
-                    ▶ {compact(v.views)}
-                  </span>
-                  <span className="absolute right-1.5 top-1.5 text-[10px] text-white/80">
-                    @{creatorById(v.creatorId).handle}
+                    ▶ {compact(v.views_count)}
                   </span>
                 </Link>
               ))}
+              {matchClips.length === 0 && (
+                <p className="col-span-3 text-sm text-muted-foreground">No public videos yet.</p>
+              )}
             </div>
           </section>
         )}
