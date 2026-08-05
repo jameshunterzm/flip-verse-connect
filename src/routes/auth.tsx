@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Mail, ArrowRight, Loader2 } from "lucide-react";
 import logo from "@/assets/flip-logo.png.asset.json";
 import { supabase } from "@/integrations/supabase/client";
-import { lovable } from "@/integrations/lovable";
 import { useFlip } from "@/lib/flip-store";
 
 export const Route = createFileRoute("/auth")({
@@ -73,7 +72,11 @@ function AuthPage() {
   async function google() {
     setError(null);
     try {
-      await lovable.auth.signInWithOAuth("google", { redirect_uri: window.location.origin });
+      const { error: err } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: window.location.origin },
+      });
+      if (err) throw err;
     } catch (e) {
       setError(e instanceof Error ? e.message : "Google sign-in failed");
     }
