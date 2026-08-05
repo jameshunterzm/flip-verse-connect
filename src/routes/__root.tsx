@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FlipStoreProvider } from "../lib/flip-store";
+import { ADSENSE_CLIENT, adsenseReady } from "../lib/ads-config";
+
 
 function NotFoundComponent() {
   return (
