@@ -18,6 +18,7 @@ import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RequestsRouteImport } from './routes/requests'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CHandleRouteImport } from './routes/c.$handle'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
@@ -70,6 +71,11 @@ const RequestsRoute = RequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -128,6 +135,7 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -146,6 +154,7 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
@@ -165,6 +174,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
@@ -182,6 +192,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
@@ -199,6 +210,7 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
@@ -217,6 +229,7 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RequestsRoute: typeof RequestsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   CHandleRoute: typeof CHandleRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -345,6 +365,7 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RequestsRoute: RequestsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   CHandleRoute: CHandleRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
