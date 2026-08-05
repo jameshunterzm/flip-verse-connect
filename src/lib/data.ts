@@ -695,3 +695,31 @@ export function useAdminActions() {
     }),
   };
 }
+
+/* ------------------------------------------------------------ single post */
+
+export function usePost(postId: string | undefined, viewerId?: string) {
+  return useQuery({
+    enabled: !!postId,
+    queryKey: ["post", postId, viewerId ?? "anon"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("posts").select("*").eq("id", postId!).maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      const [hydrated] = await hydrate([data], viewerId);
+      return hydrated ?? null;
+    },
+  });
+}
+
+/** Counts a view once per post per session. */
+export function useCountView() {
+  return useMutation({
+    mutationFn: async (postId: string) => {
+      const key = `flip-viewed-${postId}`;
+      if (typeof sessionStorage !== "undefined" && sessionStorage.getItem(key)) return;
+      sessionStorage?.setItem(key, "1");
+      await supabase.rpc("increment_post_view", { _post_id: postId });
+    },
+  });
+}
