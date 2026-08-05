@@ -18,11 +18,13 @@ import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as NotificationsRouteImport } from './routes/notifications'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as RequestsRouteImport } from './routes/requests'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CHandleRouteImport } from './routes/c.$handle'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as CreatorIndexRouteImport } from './routes/creator.index'
 import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
+import { Route as WatchPostIdRouteImport } from './routes/watch.$postId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -69,6 +71,11 @@ const RequestsRoute = RequestsRouteImport.update({
   path: '/requests',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -94,6 +101,11 @@ const CreatorDashboardRoute = CreatorDashboardRouteImport.update({
   path: '/creator/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WatchPostIdRoute = WatchPostIdRouteImport.update({
+  id: '/watch/$postId',
+  path: '/watch/$postId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -105,10 +117,12 @@ export interface FileRoutesByFullPath {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
 }
 export interface FileRoutesByTo {
@@ -121,10 +135,12 @@ export interface FileRoutesByTo {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/watch/$postId': typeof WatchPostIdRoute
   '/creator': typeof CreatorIndexRoute
 }
 export interface FileRoutesById {
@@ -138,10 +154,12 @@ export interface FileRoutesById {
   '/notifications': typeof NotificationsRoute
   '/profile': typeof ProfileRoute
   '/requests': typeof RequestsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
 }
 export interface FileRouteTypes {
@@ -156,10 +174,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/watch/$postId'
     | '/creator/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -172,10 +192,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/watch/$postId'
     | '/creator'
   id:
     | '__root__'
@@ -188,10 +210,12 @@ export interface FileRouteTypes {
     | '/notifications'
     | '/profile'
     | '/requests'
+    | '/reset-password'
     | '/settings'
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/watch/$postId'
     | '/creator/'
   fileRoutesById: FileRoutesById
 }
@@ -205,10 +229,12 @@ export interface RootRouteChildren {
   NotificationsRoute: typeof NotificationsRoute
   ProfileRoute: typeof ProfileRoute
   RequestsRoute: typeof RequestsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
   CHandleRoute: typeof CHandleRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   CreatorDashboardRoute: typeof CreatorDashboardRoute
+  WatchPostIdRoute: typeof WatchPostIdRoute
   CreatorIndexRoute: typeof CreatorIndexRoute
 }
 
@@ -277,6 +303,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RequestsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -312,6 +345,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/watch/$postId': {
+      id: '/watch/$postId'
+      path: '/watch/$postId'
+      fullPath: '/watch/$postId'
+      preLoaderRoute: typeof WatchPostIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -325,10 +365,12 @@ const rootRouteChildren: RootRouteChildren = {
   NotificationsRoute: NotificationsRoute,
   ProfileRoute: ProfileRoute,
   RequestsRoute: RequestsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
   CHandleRoute: CHandleRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   CreatorDashboardRoute: CreatorDashboardRoute,
+  WatchPostIdRoute: WatchPostIdRoute,
   CreatorIndexRoute: CreatorIndexRoute,
 }
 export const routeTree = rootRouteImport

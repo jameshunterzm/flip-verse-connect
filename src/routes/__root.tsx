@@ -12,6 +12,8 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { FlipStoreProvider } from "../lib/flip-store";
+import { ADSENSE_CLIENT, adsenseReady } from "../lib/ads-config";
+
 
 function NotFoundComponent() {
   return (
@@ -104,7 +106,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
       { rel: "icon", type: "image/png", href: "/favicon.png" },
     ],
+    scripts: adsenseReady
+      ? [
+          {
+            src: `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${ADSENSE_CLIENT}`,
+            async: true,
+            crossOrigin: "anonymous",
+          },
+        ]
+      : [],
   }),
+
 
   shellComponent: RootShell,
   component: RootComponent,

@@ -1,8 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Gift, Megaphone, TrendingUp, Clock, Eye, Users } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
-import { compact, creatorVideos, futureFeatures, monetization } from "@/lib/mock";
+import { useFlip } from "@/lib/flip-store";
+import { compact, useMyPosts, usePageStats, usePlatformSettings } from "@/lib/data";
 
 export const Route = createFileRoute("/creator/dashboard")({
   head: () => ({
@@ -16,34 +17,81 @@ export const Route = createFileRoute("/creator/dashboard")({
   component: DashboardPage,
 });
 
+const futureFeatures = [
+  "Live streaming",
+  "Stories",
+  "AI captions",
+  "AI moderation",
+  "Subscriptions",
+  "Collaborations",
+  "Music library",
+  "Marketplace",
+  "Premium memberships",
+];
+
 function DashboardPage() {
-  const m = monetization;
-  const giftsEligible =
-    m.gifts.followers.current >= m.gifts.followers.target && m.gifts.views.current >= m.gifts.views.target;
-  const adsEligible =
-    m.ads.followers.current >= m.ads.followers.target && m.ads.views.current >= m.ads.views.target;
+  const { user, creatorPage } = useFlip();
+  const { data: stats } = usePageStats(creatorPage?.id);
+  const { data: posts = [] } = useMyPosts(user?.id, creatorPage?.id);
+  const { data: settings } = usePlatformSettings();
+
+  const followers = stats?.followers ?? 0;
+  const views = stats?.views ?? 0;
+  const watchSeconds = posts.reduce(
+    (sum, p) => sum + Number(p.duration_seconds ?? 0) * (p.views_count ?? 0) * 0.6,
+    0,
+  );
+  const watchTime = `${compact(Math.round(watchSeconds / 3600))}h`;
+
+  const giftsEligible = followers >= 1000 && views >= 500_000;
+  const adsEligible = followers >= 10_000 && views >= 5_000_000;
+
+  const giftShare = (settings?.gift_revenue_share ?? 70) / 100;
+  const adShare = (settings?.ad_revenue_share ?? 55) / 100;
+  // Estimated payouts: RPM-style model applied to eligible public views.
+  const giftEarnings = giftsEligible ? Math.round((views / 1000) * 0.4 * giftShare) : 0;
+  const adEarnings = adsEligible ? Math.round((views / 1000) * 1.8 * adShare) : 0;
+
+  const top = [...posts].sort((a, b) => (b.views_count ?? 0) - (a.views_count ?? 0)).slice(0, 4);
+
+  if (!creatorPage) {
+    return (
+      <AppShell>
+        <TopBar title="Creator Dashboard" back="/creator" />
+        <div className="p-4">
+          <p className="rounded-2xl bg-surface p-4 text-sm text-muted-foreground">
+            You don’t have a Creator Page yet.{" "}
+            <Link to="/creator" className="text-brand-cyan underline">
+              Create one
+            </Link>{" "}
+            to unlock public posting and monetization.
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
       <TopBar title="Creator Dashboard" back="/creator" />
       <div className="space-y-4 p-4">
         <div className="grid grid-cols-2 gap-2">
-          <Metric icon={Users} label="Followers" value={compact(m.ads.followers.current)} />
-          <Metric icon={Eye} label="Views (90d)" value={compact(m.ads.views.current)} />
-          <Metric icon={Clock} label="Watch time" value={m.watchTime} />
-          <Metric icon={TrendingUp} label="Rev. share" value={`${m.revenueShare}%`} />
+          <Metric icon={Users} label="Followers" value={compact(followers)} />
+          <Metric icon={Eye} label="Total views" value={compact(views)} />
+          <Metric icon={Clock} label="Watch time" value={watchTime} />
+          <Metric icon={TrendingUp} label="Rev. share" value={`${settings?.ad_revenue_share ?? 55}%`} />
         </div>
 
         <div className="bg-gradient-brand-3 shadow-glow rounded-3xl p-[1px]">
           <div className="rounded-3xl bg-surface p-4">
-            <p className="text-xs text-muted-foreground">Estimated earnings · {m.earnings.month}</p>
-            <p className="mt-1 text-3xl font-bold">${m.earnings.total.toLocaleString()}</p>
+            <p className="text-xs text-muted-foreground">Estimated earnings</p>
+            <p className="mt-1 text-3xl font-bold">${(giftEarnings + adEarnings).toLocaleString()}</p>
             <div className="mt-3 flex gap-4 text-xs">
               <span className="text-muted-foreground">
-                Gifts <span className="ml-1 font-semibold text-foreground">${m.earnings.gifts.toLocaleString()}</span>
+                Gifts <span className="ml-1 font-semibold text-foreground">${giftEarnings.toLocaleString()}</span>
               </span>
               <span className="text-muted-foreground">
-                Ads <span className="ml-1 font-semibold text-foreground">${m.earnings.ads.toLocaleString()}</span>
+                Ads <span className="ml-1 font-semibold text-foreground">${adEarnings.toLocaleString()}</span>
               </span>
             </div>
           </div>
@@ -54,12 +102,8 @@ function DashboardPage() {
           title="Gifts Program"
           eligible={giftsEligible}
           rows={[
-            { label: "1,000 Followers", current: m.gifts.followers.current, target: m.gifts.followers.target },
-            {
-              label: `500K Views (${m.gifts.views.window})`,
-              current: m.gifts.views.current,
-              target: m.gifts.views.target,
-            },
+            { label: "1,000 Followers", current: followers, target: 1000 },
+            { label: "500K Views (60 days)", current: views, target: 500_000 },
           ]}
         />
 
@@ -68,33 +112,40 @@ function DashboardPage() {
           title="Ads Program"
           eligible={adsEligible}
           rows={[
-            { label: "10K Followers", current: m.ads.followers.current, target: m.ads.followers.target },
-            {
-              label: `5M Views (${m.ads.views.window})`,
-              current: m.ads.views.current,
-              target: m.ads.views.target,
-            },
+            { label: "10K Followers", current: followers, target: 10_000 },
+            { label: "5M Views (90 days)", current: views, target: 5_000_000 },
           ]}
         />
 
         <p className="rounded-2xl bg-surface p-3 text-[11px] text-muted-foreground">
-          Creators don’t earn for watching ads. Eligible Creator Pages earn a share of ad revenue generated
-          around their public videos.
+          Creators don’t earn for watching ads. Eligible Creator Pages earn a share of ad revenue generated around
+          their public videos.
         </p>
 
         <section>
           <h2 className="mb-2 text-sm font-semibold">Top-performing videos</h2>
           <div className="space-y-2">
-            {creatorVideos.slice(0, 4).map((v, i) => (
-              <div key={i} className="flex items-center gap-3 rounded-2xl bg-surface p-2.5">
-                <img src={v.poster} alt="" loading="lazy" className="h-14 w-10 rounded-lg object-cover" />
-                <div className="flex-1">
-                  <p className="text-sm font-medium">Clip #{i + 1}</p>
-                  <p className="text-xs text-muted-foreground">{v.views} views</p>
+            {top.map((v) => (
+              <Link
+                key={v.id}
+                to="/watch/$postId"
+                params={{ postId: v.id }}
+                className="flex items-center gap-3 rounded-2xl bg-surface p-2.5"
+              >
+                <img
+                  src={v.poster_url ?? v.media_url}
+                  alt=""
+                  loading="lazy"
+                  className="h-14 w-10 rounded-lg bg-surface-2 object-cover"
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium">{v.caption || "Untitled clip"}</p>
+                  <p className="text-xs text-muted-foreground">{compact(v.views_count ?? 0)} views</p>
                 </div>
-                <span className="text-xs text-success">+{12 - i * 2}%</span>
-              </div>
+                <span className="text-xs text-muted-foreground">{v.format === "long" ? "Long" : "Short"}</span>
+              </Link>
             ))}
+            {top.length === 0 && <p className="text-sm text-muted-foreground">Post a public video to see analytics.</p>}
           </div>
         </section>
 
