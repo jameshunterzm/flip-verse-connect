@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdCard, FeedCard } from "@/components/FeedCard";
+import { FeedAdSlot } from "@/components/GoogleAd";
 import { useFlip } from "@/lib/flip-store";
+import { ADS_EVERY } from "@/lib/ads-config";
 import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
@@ -28,7 +30,7 @@ export const Route = createFileRoute("/")({
 
 const tabs = ["For You", "Friends"] as const;
 
-type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad };
+type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad } | { type: "google"; key: string };
 
 function FeedPage() {
   const { adFrequency, user } = useFlip();
@@ -40,12 +42,19 @@ function FeedPage() {
   const { data: ads = [] } = useApprovedAds();
 
   const items = useMemo<Item[]>(() => {
-    const posts = (tab === "For You" ? publicFeed.data : friendsFeed.data) ?? [];
+    const source = (tab === "For You" ? publicFeed.data : friendsFeed.data) ?? [];
+    // Home is shorts-only. Long-form lives on Discover.
+    const posts = tab === "For You" ? source.filter((p) => p.format !== "long") : source;
     const out: Item[] = [];
+    let googleCount = 0;
     posts.forEach((post, i) => {
       out.push({ type: "post", post });
+      if (tab !== "For You") return;
+      const n = i + 1;
       // Ads never appear in the private friends feed.
-      if (tab === "For You" && ads.length && (i + 1) % adFrequency === 0) {
+      if (n % ADS_EVERY === 0) {
+        out.push({ type: "google", key: `g-${googleCount++}` });
+      } else if (ads.length && n % adFrequency === 0) {
         out.push({ type: "ad", ad: ads[Math.floor(i / adFrequency) % ads.length]! });
       }
     });
@@ -84,7 +93,9 @@ function FeedPage() {
         onScroll={(e) => setActiveIndex(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
       >
         {items.map((item, i) =>
-          item.type === "ad" ? (
+          item.type === "google" ? (
+            <FeedAdSlot key={item.key} />
+          ) : item.type === "ad" ? (
             <AdCard key={`ad-${item.ad.id}-${i}`} ad={item.ad} active={i === activeIndex} />
           ) : (
             <FeedCard key={item.post.id} post={item.post} active={i === activeIndex} />
@@ -95,7 +106,9 @@ function FeedPage() {
             {loading
               ? "Loading your feed…"
               : tab === "Friends"
-                ? "No friend posts yet. Add friends to see their private posts here."
+                ? user
+                  ? "No friend posts yet. Add friends to see their private posts here."
+                  : "Sign in to see posts from your friends."
                 : "No public clips yet. Be the first to post from a Creator Page."}
           </div>
         )}
