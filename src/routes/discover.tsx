@@ -1,35 +1,38 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { Search, TrendingUp, UserPlus } from "lucide-react";
+import { Search, TrendingUp, UserPlus, Play } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { DiscoverAdSlot } from "@/components/GoogleAd";
 import { useFlip } from "@/lib/flip-store";
+import { ADS_EVERY } from "@/lib/ads-config";
 import {
   compact,
-  useApprovedAds,
   useCreatorPages,
   useFollowing,
   useFriendActions,
   usePublicFeed,
   useSearchPeople,
   useToggleFollow,
+  type FeedPost,
 } from "@/lib/data";
 
 export const Route = createFileRoute("/discover")({
   head: () => ({
     meta: [
-      { title: "Discover — Flip Chat" },
+      { title: "Discover long-form videos — Flip Chat" },
       {
         name: "description",
-        content: "Search creators, usernames, videos and hashtags, and find what's trending on Flip Chat.",
+        content:
+          "Watch long-form videos from Flip Chat creators, plus trending shorts, hashtags and people to follow.",
       },
       { property: "og:title", content: "Discover on Flip Chat" },
-      { property: "og:description", content: "Trending hashtags, suggested creators and fresh clips." },
+      { property: "og:description", content: "Long-form videos, trending hashtags and suggested creators." },
     ],
   }),
   component: DiscoverPage,
 });
 
-const filters = ["Top", "Creators", "People", "Videos", "Hashtags"] as const;
+const filters = ["Top", "Videos", "Shorts", "Creators", "People", "Hashtags"] as const;
 
 function DiscoverPage() {
   const { user } = useFlip();
@@ -39,17 +42,20 @@ function DiscoverPage() {
   const { data: pages = [] } = useCreatorPages(q);
   const { data: people = [] } = useSearchPeople(q, user?.id);
   const { data: posts = [] } = usePublicFeed(user?.id);
-  const { data: ads = [] } = useApprovedAds();
   const { data: following } = useFollowing(user?.id);
   const follow = useToggleFollow(user?.id);
   const { sendRequest } = useFriendActions(user?.id);
 
   const needle = q.toLowerCase().replace("#", "");
-  const matchClips = posts.filter(
-    (p) => !q || (p.caption ?? "").toLowerCase().includes(needle) || p.hashtags.some((h) => h.includes(needle)),
-  );
+  const matches = (p: FeedPost) =>
+    !q || (p.caption ?? "").toLowerCase().includes(needle) || p.hashtags.some((h) => h.includes(needle));
+
+  const longForm = posts.filter((p) => p.format === "long" && matches(p));
+  const shorts = posts.filter((p) => p.format !== "long" && matches(p));
   const tags = [...new Set(posts.flatMap((p) => p.hashtags))].filter((t) => !q || t.includes(needle)).slice(0, 20);
-  const ad = ads[0];
+
+  const showVideos = filter === "Top" || filter === "Videos";
+  const showShorts = filter === "Top" || filter === "Shorts";
 
   return (
     <AppShell>
@@ -60,7 +66,7 @@ function DiscoverPage() {
           <input
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Creators, usernames, videos, #hashtags"
+            placeholder="Videos, creators, usernames, #hashtags"
             className="w-full bg-transparent text-sm outline-none placeholder:text-muted-foreground"
           />
         </label>
@@ -95,6 +101,23 @@ function DiscoverPage() {
                   #{t}
                 </button>
               ))}
+            </div>
+          </section>
+        )}
+
+        {showVideos && (
+          <section>
+            <h2 className="mb-2 text-sm font-semibold">Long-form videos</h2>
+            <div className="space-y-3">
+              {longForm.map((v, i) => (
+                <div key={v.id} className="space-y-3">
+                  <LongCard post={v} />
+                  {(i + 1) % ADS_EVERY === 0 && <DiscoverAdSlot />}
+                </div>
+              ))}
+              {longForm.length === 0 && (
+                <p className="text-sm text-muted-foreground">No long-form videos match that search yet.</p>
+              )}
             </div>
           </section>
         )}
@@ -159,33 +182,17 @@ function DiscoverPage() {
           </section>
         )}
 
-        {ad && (
+        {showShorts && (
           <section>
-            <h2 className="mb-2 text-sm font-semibold">Sponsored</h2>
-            <a href={ad.cta_url} target="_blank" rel="noreferrer noopener" className="block overflow-hidden rounded-2xl bg-surface">
-              <div className="relative">
-                <img src={ad.poster_url ?? ad.media_url} alt={ad.title} loading="lazy" className="h-40 w-full object-cover" />
-                <span className="absolute left-3 top-3 rounded-full bg-black/60 px-2 py-1 text-[10px] font-semibold uppercase tracking-widest">
-                  Sponsored
-                </span>
-              </div>
-              <div className="p-3">
-                <p className="text-sm font-semibold">{ad.advertiser}</p>
-                <p className="text-xs text-muted-foreground">{ad.title}</p>
-                <span className="bg-gradient-brand mt-2 inline-block rounded-full px-3 py-1.5 text-xs font-semibold text-primary-foreground">
-                  {ad.cta_label}
-                </span>
-              </div>
-            </a>
-          </section>
-        )}
-
-        {(filter === "Top" || filter === "Videos") && (
-          <section>
-            <h2 className="mb-2 text-sm font-semibold">Videos</h2>
+            <h2 className="mb-2 text-sm font-semibold">Shorts</h2>
             <div className="grid grid-cols-3 gap-1.5">
-              {matchClips.map((v) => (
-                <Link key={v.id} to="/" className="relative overflow-hidden rounded-xl">
+              {shorts.slice(0, filter === "Shorts" ? 60 : 6).map((v) => (
+                <Link
+                  key={v.id}
+                  to="/watch/$postId"
+                  params={{ postId: v.id }}
+                  className="relative overflow-hidden rounded-xl"
+                >
                   <img
                     src={v.poster_url ?? v.media_url}
                     alt={v.caption ?? ""}
@@ -197,13 +204,45 @@ function DiscoverPage() {
                   </span>
                 </Link>
               ))}
-              {matchClips.length === 0 && (
-                <p className="col-span-3 text-sm text-muted-foreground">No public videos yet.</p>
-              )}
+              {shorts.length === 0 && <p className="col-span-3 text-sm text-muted-foreground">No shorts yet.</p>}
             </div>
           </section>
         )}
       </div>
     </AppShell>
+  );
+}
+
+function LongCard({ post }: { post: FeedPost }) {
+  return (
+    <Link to="/watch/$postId" params={{ postId: post.id }} className="block overflow-hidden rounded-2xl bg-surface">
+      <div className="relative aspect-video w-full bg-surface-2">
+        <img
+          src={post.poster_url ?? undefined}
+          alt={post.caption ?? ""}
+          loading="lazy"
+          className="h-full w-full object-cover"
+        />
+        <span className="absolute bottom-2 right-2 rounded-md bg-black/70 px-1.5 py-0.5 text-[10px] font-medium">
+          {Math.round((post.duration_seconds ?? 0) / 60)} min
+        </span>
+        <span className="bg-gradient-brand absolute bottom-2 left-2 grid h-8 w-8 place-items-center rounded-full text-primary-foreground">
+          <Play className="h-4 w-4" />
+        </span>
+      </div>
+      <div className="flex gap-3 p-3">
+        <img
+          src={post.page?.avatar_url ?? post.author?.avatar_url ?? undefined}
+          alt=""
+          className="h-9 w-9 shrink-0 rounded-full bg-surface-2 object-cover"
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium">{post.caption}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {post.page?.name ?? post.author?.display_name} · {compact(post.views_count)} views
+          </p>
+        </div>
+      </div>
+    </Link>
   );
 }
