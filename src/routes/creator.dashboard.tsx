@@ -52,7 +52,7 @@ function DashboardPage() {
 
   const giftsEligible = isEligible("gifts", mon);
   const adsEligible = isEligible("ads", mon);
-  const appFor = (program: Program) => apps.find((a) => a.program === program) ?? null;
+  const appFor = (program: ProgramKey) => apps.find((a) => a.program === program) ?? null;
   const giftsApproved = appFor("gifts")?.status === "approved";
   const adsApproved = appFor("ads")?.status === "approved";
 
