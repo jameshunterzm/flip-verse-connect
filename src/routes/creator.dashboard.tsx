@@ -109,11 +109,23 @@ function DashboardPage() {
 
         <Program
           icon={Gift}
-          title="Gifts Program"
+          title="Gifts, donations & memberships"
           eligible={giftsEligible}
+          status={appFor("gifts")?.status ?? null}
+          onApply={() => apply.mutate("gifts")}
+          applying={apply.isPending}
           rows={[
-            { label: "1,000 Followers", current: followers, target: 1000 },
-            { label: "500K Views (60 days)", current: views, target: 500_000 },
+            { label: "2,000 Followers", current: followers, target: PROGRAM_RULES.gifts.followers },
+            {
+              label: "4,000 watch hours (12 months)",
+              current: Math.round(mon?.watchHours ?? 0),
+              target: PROGRAM_RULES.gifts.watchHours,
+            },
+            {
+              label: "or 5M short views (3 months)",
+              current: mon?.shortViews ?? 0,
+              target: PROGRAM_RULES.gifts.shortViews,
+            },
           ]}
         />
 
@@ -121,9 +133,21 @@ function DashboardPage() {
           icon={Megaphone}
           title="Ads Program"
           eligible={adsEligible}
+          status={appFor("ads")?.status ?? null}
+          onApply={() => apply.mutate("ads")}
+          applying={apply.isPending}
           rows={[
-            { label: "10K Followers", current: followers, target: 10_000 },
-            { label: "5M Views (90 days)", current: views, target: 5_000_000 },
+            { label: "7,000 Followers", current: followers, target: PROGRAM_RULES.ads.followers },
+            {
+              label: "6,000 watch hours (12 months)",
+              current: Math.round(mon?.watchHours ?? 0),
+              target: PROGRAM_RULES.ads.watchHours,
+            },
+            {
+              label: "or 12M short views (3 months)",
+              current: mon?.shortViews ?? 0,
+              target: PROGRAM_RULES.ads.shortViews,
+            },
           ]}
         />
 
