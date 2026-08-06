@@ -60,7 +60,7 @@ function ProfilePage() {
 
         <div className="mt-4 flex gap-2">
           <Link
-            to="/settings"
+            to="/profile/edit"
             className="flex flex-1 items-center justify-center gap-2 rounded-2xl bg-surface py-2.5 text-sm font-medium"
           >
             Edit Profile

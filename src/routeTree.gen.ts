@@ -24,6 +24,7 @@ import { Route as CHandleRouteImport } from './routes/c.$handle'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as CreatorIndexRouteImport } from './routes/creator.index'
 import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
+import { Route as CreatorEditRouteImport } from './routes/creator.edit'
 import { Route as ProfileEditRouteImport } from './routes/profile.edit'
 import { Route as WatchPostIdRouteImport } from './routes/watch.$postId'
 
@@ -102,6 +103,11 @@ const CreatorDashboardRoute = CreatorDashboardRouteImport.update({
   path: '/creator/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CreatorEditRoute = CreatorEditRouteImport.update({
+  id: '/creator/edit',
+  path: '/creator/edit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ProfileEditRoute = ProfileEditRouteImport.update({
   id: '/edit',
   path: '/edit',
@@ -128,6 +134,7 @@ export interface FileRoutesByFullPath {
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator/edit': typeof CreatorEditRoute
   '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
@@ -147,6 +154,7 @@ export interface FileRoutesByTo {
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator/edit': typeof CreatorEditRoute
   '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator': typeof CreatorIndexRoute
@@ -167,6 +175,7 @@ export interface FileRoutesById {
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/creator/edit': typeof CreatorEditRoute
   '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
@@ -188,6 +197,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/creator/edit'
     | '/profile/edit'
     | '/watch/$postId'
     | '/creator/'
@@ -207,6 +217,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/creator/edit'
     | '/profile/edit'
     | '/watch/$postId'
     | '/creator'
@@ -226,6 +237,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/creator/edit'
     | '/profile/edit'
     | '/watch/$postId'
     | '/creator/'
@@ -246,6 +258,7 @@ export interface RootRouteChildren {
   CHandleRoute: typeof CHandleRoute
   ChatThreadIdRoute: typeof ChatThreadIdRoute
   CreatorDashboardRoute: typeof CreatorDashboardRoute
+  CreatorEditRoute: typeof CreatorEditRoute
   WatchPostIdRoute: typeof WatchPostIdRoute
   CreatorIndexRoute: typeof CreatorIndexRoute
 }
@@ -357,6 +370,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/creator/edit': {
+      id: '/creator/edit'
+      path: '/creator/edit'
+      fullPath: '/creator/edit'
+      preLoaderRoute: typeof CreatorEditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/profile/edit': {
       id: '/profile/edit'
       path: '/edit'
@@ -400,6 +420,7 @@ const rootRouteChildren: RootRouteChildren = {
   CHandleRoute: CHandleRoute,
   ChatThreadIdRoute: ChatThreadIdRoute,
   CreatorDashboardRoute: CreatorDashboardRoute,
+  CreatorEditRoute: CreatorEditRoute,
   WatchPostIdRoute: WatchPostIdRoute,
   CreatorIndexRoute: CreatorIndexRoute,
 }
