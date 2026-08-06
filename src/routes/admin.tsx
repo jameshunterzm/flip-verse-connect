@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
 import { compact, useAdminActions, useAdminData, usePlatformSettings } from "@/lib/data";
+import { useAdminApplications, useReviewApplication } from "@/lib/monetization";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
