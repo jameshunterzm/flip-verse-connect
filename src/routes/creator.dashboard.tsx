@@ -4,6 +4,14 @@ import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
 import { compact, useMyPosts, usePageStats, usePlatformSettings } from "@/lib/data";
+import {
+  PROGRAM_RULES,
+  isEligible,
+  useApplyForProgram,
+  useMonetizationStats,
+  useMyApplications,
+  type Program as ProgramKey,
+} from "@/lib/monetization";
 
 export const Route = createFileRoute("/creator/dashboard")({
   head: () => ({
@@ -34,23 +42,25 @@ function DashboardPage() {
   const { data: stats } = usePageStats(creatorPage?.id);
   const { data: posts = [] } = useMyPosts(user?.id, creatorPage?.id);
   const { data: settings } = usePlatformSettings();
+  const { data: mon } = useMonetizationStats(creatorPage?.id);
+  const { data: apps = [] } = useMyApplications(creatorPage?.id);
+  const apply = useApplyForProgram(creatorPage?.id, user?.id);
 
   const followers = stats?.followers ?? 0;
   const views = stats?.views ?? 0;
-  const watchSeconds = posts.reduce(
-    (sum, p) => sum + Number(p.duration_seconds ?? 0) * (p.views_count ?? 0) * 0.6,
-    0,
-  );
-  const watchTime = `${compact(Math.round(watchSeconds / 3600))}h`;
+  const watchTime = `${compact(Math.round(mon?.watchHours ?? 0))}h`;
 
-  const giftsEligible = followers >= 1000 && views >= 500_000;
-  const adsEligible = followers >= 10_000 && views >= 5_000_000;
+  const giftsEligible = isEligible("gifts", mon);
+  const adsEligible = isEligible("ads", mon);
+  const appFor = (program: ProgramKey) => apps.find((a) => a.program === program) ?? null;
+  const giftsApproved = appFor("gifts")?.status === "approved";
+  const adsApproved = appFor("ads")?.status === "approved";
 
   const giftShare = (settings?.gift_revenue_share ?? 70) / 100;
   const adShare = (settings?.ad_revenue_share ?? 55) / 100;
-  // Estimated payouts: RPM-style model applied to eligible public views.
-  const giftEarnings = giftsEligible ? Math.round((views / 1000) * 0.4 * giftShare) : 0;
-  const adEarnings = adsEligible ? Math.round((views / 1000) * 1.8 * adShare) : 0;
+  // Estimated payouts: RPM-style model applied to approved, eligible public views.
+  const giftEarnings = giftsApproved ? Math.round((views / 1000) * 0.4 * giftShare) : 0;
+  const adEarnings = adsApproved ? Math.round((views / 1000) * 1.8 * adShare) : 0;
 
   const top = [...posts].sort((a, b) => (b.views_count ?? 0) - (a.views_count ?? 0)).slice(0, 4);
 
@@ -99,11 +109,23 @@ function DashboardPage() {
 
         <Program
           icon={Gift}
-          title="Gifts Program"
+          title="Gifts, donations & memberships"
           eligible={giftsEligible}
+          status={appFor("gifts")?.status ?? null}
+          onApply={() => apply.mutate("gifts")}
+          applying={apply.isPending}
           rows={[
-            { label: "1,000 Followers", current: followers, target: 1000 },
-            { label: "500K Views (60 days)", current: views, target: 500_000 },
+            { label: "2,000 Followers", current: followers, target: PROGRAM_RULES.gifts.followers },
+            {
+              label: "4,000 watch hours (12 months)",
+              current: Math.round(mon?.watchHours ?? 0),
+              target: PROGRAM_RULES.gifts.watchHours,
+            },
+            {
+              label: "or 5M short views (3 months)",
+              current: mon?.shortViews ?? 0,
+              target: PROGRAM_RULES.gifts.shortViews,
+            },
           ]}
         />
 
@@ -111,9 +133,21 @@ function DashboardPage() {
           icon={Megaphone}
           title="Ads Program"
           eligible={adsEligible}
+          status={appFor("ads")?.status ?? null}
+          onApply={() => apply.mutate("ads")}
+          applying={apply.isPending}
           rows={[
-            { label: "10K Followers", current: followers, target: 10_000 },
-            { label: "5M Views (90 days)", current: views, target: 5_000_000 },
+            { label: "7,000 Followers", current: followers, target: PROGRAM_RULES.ads.followers },
+            {
+              label: "6,000 watch hours (12 months)",
+              current: Math.round(mon?.watchHours ?? 0),
+              target: PROGRAM_RULES.ads.watchHours,
+            },
+            {
+              label: "or 12M short views (3 months)",
+              current: mon?.shortViews ?? 0,
+              target: PROGRAM_RULES.ads.shortViews,
+            },
           ]}
         />
 
@@ -178,11 +212,17 @@ function Program({
   icon: Icon,
   title,
   eligible,
+  status,
+  onApply,
+  applying,
   rows,
 }: {
   icon: typeof Gift;
   title: string;
   eligible: boolean;
+  status: "pending" | "approved" | "rejected" | null;
+  onApply: () => void;
+  applying: boolean;
   rows: { label: string; current: number; target: number }[];
 }) {
   return (
@@ -217,6 +257,36 @@ function Program({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        {status === "approved" ? (
+          <p className="rounded-2xl bg-success/15 px-3 py-2.5 text-xs font-semibold text-success">
+            Approved — you're earning from this program.
+          </p>
+        ) : status === "pending" ? (
+          <p className="rounded-2xl bg-surface-2 px-3 py-2.5 text-xs text-muted-foreground">
+            Application under review by the Flip Chat team.
+          </p>
+        ) : (
+          <>
+            <button
+              disabled={!eligible || applying}
+              onClick={onApply}
+              className="bg-gradient-brand w-full rounded-2xl py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              {applying ? "Sending…" : status === "rejected" ? "Apply again" : "Apply to join"}
+            </button>
+            {!eligible && (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Meet the follower target and one of the watch-time or views targets to apply.
+              </p>
+            )}
+            {status === "rejected" && (
+              <p className="mt-2 text-center text-[11px] text-destructive">Your last application was declined.</p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );

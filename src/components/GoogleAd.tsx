@@ -3,6 +3,7 @@ import {
   ADSENSE_CLIENT,
   ADSENSE_DISCOVER_SLOT,
   ADSENSE_FEED_SLOT,
+  ADSENSE_LAYOUT_KEY,
   adsenseReady,
 } from "@/lib/ads-config";
 
@@ -38,18 +39,19 @@ function Placeholder({ label }: { label: string }) {
 
 /** Full-screen 9:16 sponsored slot shown between shorts in the home feed. */
 export function FeedAdSlot() {
-  useAdsensePush(adsenseReady && !!ADSENSE_FEED_SLOT);
+  const live = adsenseReady && !!ADSENSE_FEED_SLOT;
+  useAdsensePush(live);
   return (
     <section className="relative h-dvh w-full shrink-0 snap-start overflow-hidden bg-black">
-      <div className="absolute inset-0">
-        {adsenseReady && ADSENSE_FEED_SLOT ? (
+      <div className="absolute inset-0 grid place-items-center">
+        {live ? (
           <ins
             className="adsbygoogle block h-full w-full"
             style={{ display: "block", width: "100%", height: "100%" }}
+            data-ad-format="fluid"
+            data-ad-layout-key={ADSENSE_LAYOUT_KEY}
             data-ad-client={ADSENSE_CLIENT}
             data-ad-slot={ADSENSE_FEED_SLOT}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
           />
         ) : (
           <Placeholder label="Google ad appears here after every 5 shorts" />
@@ -64,18 +66,19 @@ export function FeedAdSlot() {
 
 /** In-list sponsored slot for Discover, matched to the video card ratio. */
 export function DiscoverAdSlot({ ratio = "aspect-video" }: { ratio?: string }) {
-  useAdsensePush(adsenseReady && !!ADSENSE_DISCOVER_SLOT);
+  const live = adsenseReady && !!ADSENSE_DISCOVER_SLOT;
+  useAdsensePush(live);
   return (
     <div className="overflow-hidden rounded-2xl bg-surface">
       <div className={`relative ${ratio} w-full`}>
-        {adsenseReady && ADSENSE_DISCOVER_SLOT ? (
+        {live ? (
           <ins
             className="adsbygoogle absolute inset-0 block"
             style={{ display: "block", width: "100%", height: "100%" }}
+            data-ad-format="fluid"
+            data-ad-layout-key={ADSENSE_LAYOUT_KEY}
             data-ad-client={ADSENSE_CLIENT}
             data-ad-slot={ADSENSE_DISCOVER_SLOT}
-            data-ad-format="auto"
-            data-full-width-responsive="true"
           />
         ) : (
           <div className="absolute inset-0">

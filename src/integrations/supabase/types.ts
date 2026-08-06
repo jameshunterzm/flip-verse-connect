@@ -108,45 +108,54 @@ export type Database = {
       }
       creator_pages: {
         Row: {
+          ads_enabled: boolean
           avatar_url: string | null
           bio: string | null
           cover_url: string | null
           created_at: string
           featured: boolean
+          gifts_enabled: boolean
           handle: string
           id: string
           link_url: string | null
           name: string
+          name_changed_at: string | null
           owner_id: string
           suspended: boolean
           updated_at: string
           verified: boolean
         }
         Insert: {
+          ads_enabled?: boolean
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
           featured?: boolean
+          gifts_enabled?: boolean
           handle: string
           id?: string
           link_url?: string | null
           name: string
+          name_changed_at?: string | null
           owner_id: string
           suspended?: boolean
           updated_at?: string
           verified?: boolean
         }
         Update: {
+          ads_enabled?: boolean
           avatar_url?: string | null
           bio?: string | null
           cover_url?: string | null
           created_at?: string
           featured?: boolean
+          gifts_enabled?: boolean
           handle?: string
           id?: string
           link_url?: string | null
           name?: string
+          name_changed_at?: string | null
           owner_id?: string
           suspended?: boolean
           updated_at?: string
@@ -254,6 +263,53 @@ export type Database = {
           sender_id?: string
         }
         Relationships: []
+      }
+      monetization_applications: {
+        Row: {
+          created_at: string
+          id: string
+          note: string
+          owner_id: string
+          page_id: string
+          program: Database["public"]["Enums"]["monetization_program"]
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["application_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string
+          owner_id: string
+          page_id: string
+          program: Database["public"]["Enums"]["monetization_program"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string
+          owner_id?: string
+          page_id?: string
+          program?: Database["public"]["Enums"]["monetization_program"]
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["application_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "monetization_applications_page_id_fkey"
+            columns: ["page_id"]
+            isOneToOne: false
+            referencedRelation: "creator_pages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       notifications: {
         Row: {
@@ -390,6 +446,7 @@ export type Database = {
           trim_start: number
           views_count: number
           visibility: Database["public"]["Enums"]["post_visibility"]
+          watch_seconds: number
         }
         Insert: {
           author_id: string
@@ -408,6 +465,7 @@ export type Database = {
           trim_start?: number
           views_count?: number
           visibility?: Database["public"]["Enums"]["post_visibility"]
+          watch_seconds?: number
         }
         Update: {
           author_id?: string
@@ -426,6 +484,7 @@ export type Database = {
           trim_start?: number
           views_count?: number
           visibility?: Database["public"]["Enums"]["post_visibility"]
+          watch_seconds?: number
         }
         Relationships: [
           {
@@ -446,6 +505,7 @@ export type Database = {
           friends_only_comments: boolean
           id: string
           last_seen: string
+          name_changes: string[]
           private_account: boolean
           show_online: boolean
           suspended: boolean
@@ -460,6 +520,7 @@ export type Database = {
           friends_only_comments?: boolean
           id: string
           last_seen?: string
+          name_changes?: string[]
           private_account?: boolean
           show_online?: boolean
           suspended?: boolean
@@ -474,6 +535,7 @@ export type Database = {
           friends_only_comments?: boolean
           id?: string
           last_seen?: string
+          name_changes?: string[]
           private_account?: boolean
           show_online?: boolean
           suspended?: boolean
@@ -562,6 +624,8 @@ export type Database = {
     Enums: {
       ad_status: "pending" | "approved" | "rejected"
       app_role: "admin" | "moderator" | "user"
+      application_status: "pending" | "approved" | "rejected"
+      monetization_program: "gifts" | "ads"
       post_kind: "clip" | "image"
       post_visibility: "friends" | "public"
       request_status: "pending" | "accepted" | "declined"
@@ -695,6 +759,8 @@ export const Constants = {
     Enums: {
       ad_status: ["pending", "approved", "rejected"],
       app_role: ["admin", "moderator", "user"],
+      application_status: ["pending", "approved", "rejected"],
+      monetization_program: ["gifts", "ads"],
       post_kind: ["clip", "image"],
       post_visibility: ["friends", "public"],
       request_status: ["pending", "accepted", "declined"],

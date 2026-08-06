@@ -3,6 +3,7 @@ import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
 import { compact, useAdminActions, useAdminData, usePlatformSettings } from "@/lib/data";
+import { useAdminApplications, useReviewApplication } from "@/lib/monetization";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -20,6 +21,8 @@ function AdminPage() {
   const { isAdmin } = useFlip();
   const { data } = useAdminData(isAdmin);
   const { data: settings } = usePlatformSettings();
+  const { data: applications = [] } = useAdminApplications(isAdmin);
+  const review = useReviewApplication();
   const { setSettings, setAdStatus, updatePage, suspendUser, resolveReport } = useAdminActions();
 
   if (!isAdmin) {
@@ -66,6 +69,38 @@ function AdminPage() {
             max={100}
             onChange={(v) => setSettings.mutate({ ad_revenue_share: v })}
           />
+        </Section>
+
+        <Section title="Monetization approvals">
+          {applications.map((a) => (
+            <div key={a.id} className="flex items-center gap-3 px-3 py-3">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium">
+                  {a.page?.name ?? "Creator page"} · {a.program === "ads" ? "Ads" : "Gifts"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  @{a.page?.handle ?? "unknown"} · {a.status}
+                </p>
+              </div>
+              {a.status !== "approved" && (
+                <button
+                  onClick={() => review.mutate({ id: a.id, status: "approved" })}
+                  className="rounded-full bg-surface-2 px-3 py-1 text-xs text-brand-cyan"
+                >
+                  Approve
+                </button>
+              )}
+              {a.status !== "rejected" && (
+                <button
+                  onClick={() => review.mutate({ id: a.id, status: "rejected" })}
+                  className="rounded-full bg-surface-2 px-3 py-1 text-xs text-destructive"
+                >
+                  Reject
+                </button>
+              )}
+            </div>
+          ))}
+          {applications.length === 0 && <Empty>No monetization applications.</Empty>}
         </Section>
 
         <Section title="Advertisements">
