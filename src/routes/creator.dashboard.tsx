@@ -4,6 +4,14 @@ import { AppShell } from "@/components/AppShell";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
 import { compact, useMyPosts, usePageStats, usePlatformSettings } from "@/lib/data";
+import {
+  PROGRAM_RULES,
+  isEligible,
+  useApplyForProgram,
+  useMonetizationStats,
+  useMyApplications,
+  type Program as ProgramKey,
+} from "@/lib/monetization";
 
 export const Route = createFileRoute("/creator/dashboard")({
   head: () => ({
