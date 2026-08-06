@@ -34,23 +34,25 @@ function DashboardPage() {
   const { data: stats } = usePageStats(creatorPage?.id);
   const { data: posts = [] } = useMyPosts(user?.id, creatorPage?.id);
   const { data: settings } = usePlatformSettings();
+  const { data: mon } = useMonetizationStats(creatorPage?.id);
+  const { data: apps = [] } = useMyApplications(creatorPage?.id);
+  const apply = useApplyForProgram(creatorPage?.id, user?.id);
 
   const followers = stats?.followers ?? 0;
   const views = stats?.views ?? 0;
-  const watchSeconds = posts.reduce(
-    (sum, p) => sum + Number(p.duration_seconds ?? 0) * (p.views_count ?? 0) * 0.6,
-    0,
-  );
-  const watchTime = `${compact(Math.round(watchSeconds / 3600))}h`;
+  const watchTime = `${compact(Math.round(mon?.watchHours ?? 0))}h`;
 
-  const giftsEligible = followers >= 1000 && views >= 500_000;
-  const adsEligible = followers >= 10_000 && views >= 5_000_000;
+  const giftsEligible = isEligible("gifts", mon);
+  const adsEligible = isEligible("ads", mon);
+  const appFor = (program: Program) => apps.find((a) => a.program === program) ?? null;
+  const giftsApproved = appFor("gifts")?.status === "approved";
+  const adsApproved = appFor("ads")?.status === "approved";
 
   const giftShare = (settings?.gift_revenue_share ?? 70) / 100;
   const adShare = (settings?.ad_revenue_share ?? 55) / 100;
-  // Estimated payouts: RPM-style model applied to eligible public views.
-  const giftEarnings = giftsEligible ? Math.round((views / 1000) * 0.4 * giftShare) : 0;
-  const adEarnings = adsEligible ? Math.round((views / 1000) * 1.8 * adShare) : 0;
+  // Estimated payouts: RPM-style model applied to approved, eligible public views.
+  const giftEarnings = giftsApproved ? Math.round((views / 1000) * 0.4 * giftShare) : 0;
+  const adEarnings = adsApproved ? Math.round((views / 1000) * 1.8 * adShare) : 0;
 
   const top = [...posts].sort((a, b) => (b.views_count ?? 0) - (a.views_count ?? 0)).slice(0, 4);
 
