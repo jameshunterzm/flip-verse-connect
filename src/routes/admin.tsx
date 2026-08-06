@@ -21,6 +21,8 @@ function AdminPage() {
   const { isAdmin } = useFlip();
   const { data } = useAdminData(isAdmin);
   const { data: settings } = usePlatformSettings();
+  const { data: applications = [] } = useAdminApplications(isAdmin);
+  const review = useReviewApplication();
   const { setSettings, setAdStatus, updatePage, suspendUser, resolveReport } = useAdminActions();
 
   if (!isAdmin) {
