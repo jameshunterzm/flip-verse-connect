@@ -103,11 +103,17 @@ function CreatorPage() {
 
         <div className="mt-4 flex gap-2">
           <Link
-            to="/c/$handle"
-            params={{ handle: creatorPage.handle }}
+            to="/creator/edit"
             className="bg-gradient-brand flex-1 rounded-2xl py-2.5 text-center text-sm font-semibold text-primary-foreground"
           >
-            View public page
+            Edit page
+          </Link>
+          <Link
+            to="/c/$handle"
+            params={{ handle: creatorPage.handle }}
+            className="flex-1 rounded-2xl bg-surface py-2.5 text-center text-sm font-semibold"
+          >
+            View public
           </Link>
           <Link
             to="/creator/dashboard"
