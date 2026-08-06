@@ -212,11 +212,17 @@ function Program({
   icon: Icon,
   title,
   eligible,
+  status,
+  onApply,
+  applying,
   rows,
 }: {
   icon: typeof Gift;
   title: string;
   eligible: boolean;
+  status: "pending" | "approved" | "rejected" | null;
+  onApply: () => void;
+  applying: boolean;
   rows: { label: string; current: number; target: number }[];
 }) {
   return (
@@ -251,6 +257,36 @@ function Program({
             </div>
           );
         })}
+      </div>
+
+      <div className="mt-4">
+        {status === "approved" ? (
+          <p className="rounded-2xl bg-success/15 px-3 py-2.5 text-xs font-semibold text-success">
+            Approved — you're earning from this program.
+          </p>
+        ) : status === "pending" ? (
+          <p className="rounded-2xl bg-surface-2 px-3 py-2.5 text-xs text-muted-foreground">
+            Application under review by the Flip Chat team.
+          </p>
+        ) : (
+          <>
+            <button
+              disabled={!eligible || applying}
+              onClick={onApply}
+              className="bg-gradient-brand w-full rounded-2xl py-2.5 text-sm font-semibold text-primary-foreground disabled:opacity-40"
+            >
+              {applying ? "Sending…" : status === "rejected" ? "Apply again" : "Apply to join"}
+            </button>
+            {!eligible && (
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Meet the follower target and one of the watch-time or views targets to apply.
+              </p>
+            )}
+            {status === "rejected" && (
+              <p className="mt-2 text-center text-[11px] text-destructive">Your last application was declined.</p>
+            )}
+          </>
+        )}
       </div>
     </div>
   );
