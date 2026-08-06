@@ -24,6 +24,7 @@ import { Route as CHandleRouteImport } from './routes/c.$handle'
 import { Route as ChatThreadIdRouteImport } from './routes/chat.$threadId'
 import { Route as CreatorIndexRouteImport } from './routes/creator.index'
 import { Route as CreatorDashboardRouteImport } from './routes/creator.dashboard'
+import { Route as ProfileEditRouteImport } from './routes/profile.edit'
 import { Route as WatchPostIdRouteImport } from './routes/watch.$postId'
 
 const IndexRoute = IndexRouteImport.update({
@@ -101,6 +102,11 @@ const CreatorDashboardRoute = CreatorDashboardRouteImport.update({
   path: '/creator/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProfileEditRoute = ProfileEditRouteImport.update({
+  id: '/edit',
+  path: '/edit',
+  getParentRoute: () => ProfileRoute,
+} as any)
 const WatchPostIdRoute = WatchPostIdRouteImport.update({
   id: '/watch/$postId',
   path: '/watch/$postId',
@@ -115,13 +121,14 @@ export interface FileRoutesByFullPath {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/requests': typeof RequestsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
 }
@@ -133,13 +140,14 @@ export interface FileRoutesByTo {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/requests': typeof RequestsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator': typeof CreatorIndexRoute
 }
@@ -152,13 +160,14 @@ export interface FileRoutesById {
   '/discover': typeof DiscoverRoute
   '/inbox': typeof InboxRoute
   '/notifications': typeof NotificationsRoute
-  '/profile': typeof ProfileRoute
+  '/profile': typeof ProfileRouteWithChildren
   '/requests': typeof RequestsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
   '/c/$handle': typeof CHandleRoute
   '/chat/$threadId': typeof ChatThreadIdRoute
   '/creator/dashboard': typeof CreatorDashboardRoute
+  '/profile/edit': typeof ProfileEditRoute
   '/watch/$postId': typeof WatchPostIdRoute
   '/creator/': typeof CreatorIndexRoute
 }
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/profile/edit'
     | '/watch/$postId'
     | '/creator/'
   fileRoutesByTo: FileRoutesByTo
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/profile/edit'
     | '/watch/$postId'
     | '/creator'
   id:
@@ -215,6 +226,7 @@ export interface FileRouteTypes {
     | '/c/$handle'
     | '/chat/$threadId'
     | '/creator/dashboard'
+    | '/profile/edit'
     | '/watch/$postId'
     | '/creator/'
   fileRoutesById: FileRoutesById
@@ -227,7 +239,7 @@ export interface RootRouteChildren {
   DiscoverRoute: typeof DiscoverRoute
   InboxRoute: typeof InboxRoute
   NotificationsRoute: typeof NotificationsRoute
-  ProfileRoute: typeof ProfileRoute
+  ProfileRoute: typeof ProfileRouteWithChildren
   RequestsRoute: typeof RequestsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SettingsRoute: typeof SettingsRoute
@@ -345,6 +357,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CreatorDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/profile/edit': {
+      id: '/profile/edit'
+      path: '/edit'
+      fullPath: '/profile/edit'
+      preLoaderRoute: typeof ProfileEditRouteImport
+      parentRoute: typeof ProfileRoute
+    }
     '/watch/$postId': {
       id: '/watch/$postId'
       path: '/watch/$postId'
@@ -355,6 +374,17 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface ProfileRouteChildren {
+  ProfileEditRoute: typeof ProfileEditRoute
+}
+
+const ProfileRouteChildren: ProfileRouteChildren = {
+  ProfileEditRoute: ProfileEditRoute,
+}
+
+const ProfileRouteWithChildren =
+  ProfileRoute._addFileChildren(ProfileRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
@@ -363,7 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   DiscoverRoute: DiscoverRoute,
   InboxRoute: InboxRoute,
   NotificationsRoute: NotificationsRoute,
-  ProfileRoute: ProfileRoute,
+  ProfileRoute: ProfileRouteWithChildren,
   RequestsRoute: RequestsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SettingsRoute: SettingsRoute,
