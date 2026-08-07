@@ -151,6 +151,8 @@ function ProfilePage() {
         </div>
       )}
 
+      <ProfileBannerAd />
+
       <AccountSwitcher open={switcher} onOpenChange={setSwitcher} />
     </AppShell>
   );

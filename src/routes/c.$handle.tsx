@@ -101,6 +101,8 @@ function PublicCreatorPage() {
           <p className="col-span-3 py-12 text-center text-sm text-muted-foreground">No public posts yet.</p>
         )}
       </div>
+
+      <ProfileBannerAd />
     </AppShell>
   );
 }
