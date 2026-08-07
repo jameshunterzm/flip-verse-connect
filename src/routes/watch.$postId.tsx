@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft } from "lucide-react";
 import { CommentsSheet } from "@/components/CommentsSheet";
+import { LongVideoPlayer } from "@/components/LongVideoPlayer";
 import { DiscoverAdSlot } from "@/components/GoogleAd";
+
 import { useFlip } from "@/lib/flip-store";
 import {
   compact,
