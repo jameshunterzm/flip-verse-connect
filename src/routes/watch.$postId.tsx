@@ -60,14 +60,8 @@ function WatchPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <video
-          src={post.media_url}
-          poster={post.poster_url ?? undefined}
-          controls
-          autoPlay
-          playsInline
-          className="aspect-video w-full bg-black"
-        />
+        <LongVideoPlayer src={post.media_url} poster={post.poster_url} title={post.caption} />
+
       </div>
 
       <div className="space-y-4 p-4">
