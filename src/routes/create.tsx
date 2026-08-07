@@ -89,7 +89,7 @@ function CreatePage() {
 
       let posterUrl: string | null = null;
       if (isVideo) {
-        const poster = await capturePoster(file, trimStart);
+        const poster = (await capturePoster(file, trimStart)) ?? (await capturePoster(file, 0));
         if (poster) posterUrl = await uploadToR2(poster, "posters", "poster.jpg");
       }
 

@@ -2,7 +2,9 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Heart, MessageCircle, Share2, Bookmark, ArrowLeft } from "lucide-react";
 import { CommentsSheet } from "@/components/CommentsSheet";
+import { LongVideoPlayer } from "@/components/LongVideoPlayer";
 import { DiscoverAdSlot } from "@/components/GoogleAd";
+
 import { useFlip } from "@/lib/flip-store";
 import {
   compact,
@@ -60,14 +62,8 @@ function WatchPage() {
         >
           <ArrowLeft className="h-5 w-5" />
         </button>
-        <video
-          src={post.media_url}
-          poster={post.poster_url ?? undefined}
-          controls
-          autoPlay
-          playsInline
-          className="aspect-video w-full bg-black"
-        />
+        <LongVideoPlayer src={post.media_url} poster={post.poster_url} title={post.caption} />
+
       </div>
 
       <div className="space-y-4 p-4">
