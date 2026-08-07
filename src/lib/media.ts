@@ -33,45 +33,55 @@ export function readVideoDuration(file: File): Promise<number> {
   });
 }
 
-/** Grabs a JPEG poster frame at `atSecond`. */
+/** Grabs a JPEG poster frame at `atSecond` (falls back to the first frame). */
 export function capturePoster(file: File, atSecond: number): Promise<Blob | null> {
   return new Promise((resolve) => {
     const url = URL.createObjectURL(file);
     const video = document.createElement("video");
-    video.preload = "metadata";
+    video.preload = "auto";
     video.muted = true;
     video.playsInline = true;
-    const cleanup = () => URL.revokeObjectURL(url);
-    video.onloadedmetadata = () => {
-      video.currentTime = Math.min(atSecond + 0.1, Math.max(0, video.duration - 0.1));
+    video.crossOrigin = "anonymous";
+
+    let settled = false;
+    const finish = (blob: Blob | null) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      URL.revokeObjectURL(url);
+      video.removeAttribute("src");
+      resolve(blob);
     };
-    video.onseeked = () => {
-      const canvas = document.createElement("canvas");
-      canvas.width = video.videoWidth || 720;
-      canvas.height = video.videoHeight || 1280;
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        cleanup();
-        resolve(null);
-        return;
+
+    const timer = setTimeout(() => finish(null), 12000);
+
+    const draw = () => {
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth || 720;
+        canvas.height = video.videoHeight || 1280;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) return finish(null);
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((blob) => finish(blob), "image/jpeg", 0.82);
+      } catch {
+        finish(null);
       }
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      canvas.toBlob(
-        (blob) => {
-          cleanup();
-          resolve(blob);
-        },
-        "image/jpeg",
-        0.82,
-      );
     };
-    video.onerror = () => {
-      cleanup();
-      resolve(null);
+
+    video.onloadeddata = () => {
+      const target = Math.min(Math.max(atSecond, 0) + 0.1, Math.max(0.1, (video.duration || 1) - 0.1));
+      if (Math.abs(video.currentTime - target) < 0.05) draw();
+      else video.currentTime = target;
     };
+    video.onseeked = draw;
+    video.onerror = () => finish(null);
     video.src = url;
+    // Some browsers only decode a frame once playback is kicked off.
+    void video.play().then(() => video.pause()).catch(() => undefined);
   });
 }
+
 
 function extensionOf(name: string, fallback: string) {
   const ext = name.split(".").pop();
