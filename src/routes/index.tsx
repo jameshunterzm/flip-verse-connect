@@ -1,11 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdCard, FeedCard } from "@/components/FeedCard";
 import { FeedAdSlot } from "@/components/GoogleAd";
 import { useFlip } from "@/lib/flip-store";
 import { ADS_EVERY } from "@/lib/ads-config";
+import { SHORTS_PER_INTERSTITIAL, maybeShowInterstitial } from "@/lib/admob";
 import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
@@ -60,6 +61,18 @@ function FeedPage() {
     });
     return out;
   }, [tab, publicFeed.data, friendsFeed.data, ads, adFrequency]);
+
+  // AdMob (Android app): one interstitial after every 5 shorts.
+  const lastMilestone = useRef(0);
+  useEffect(() => {
+    if (tab !== "For You") return;
+    const watched = items.slice(0, activeIndex + 1).filter((it) => it.type === "post").length;
+    const milestone = Math.floor(watched / SHORTS_PER_INTERSTITIAL);
+    if (milestone > lastMilestone.current) {
+      lastMilestone.current = milestone;
+      maybeShowInterstitial();
+    }
+  }, [activeIndex, items, tab]);
 
   const loading = tab === "For You" ? publicFeed.isLoading : friendsFeed.isLoading;
 

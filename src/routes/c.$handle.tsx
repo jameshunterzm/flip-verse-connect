@@ -1,5 +1,6 @@
 import { createFileRoute, useParams } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { ProfileBannerAd } from "@/components/AdMobBanner";
 import { TopBar } from "@/components/TopBar";
 import { useFlip } from "@/lib/flip-store";
 import { compact, useCreatorPage, useFollowing, usePageStats, usePublicFeed, useToggleFollow } from "@/lib/data";

@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { Lock, UserPlus, MoreHorizontal, Users, Ban, UserMinus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { ProfileBannerAd } from "@/components/AdMobBanner";
 import { AccountSwitcher } from "@/components/AccountSwitcher";
 import { useFlip } from "@/lib/flip-store";
 import { useFriendActions, useFriendRequests, useFriends, useMyPosts } from "@/lib/data";
