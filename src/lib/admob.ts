@@ -14,10 +14,15 @@ type Maybe<T> = T | undefined;
 
 type MedianAdmob = {
   banner?: {
+    enable?: (opts?: Record<string, unknown>) => unknown;
+    disable?: (opts?: Record<string, unknown>) => unknown;
     show?: (opts?: Record<string, unknown>) => unknown;
     hide?: (opts?: Record<string, unknown>) => unknown;
   };
+  showInterstitialIfReady?: (opts?: Record<string, unknown>) => unknown;
+  showInterstitialOnNextPageLoadIfReady?: (opts?: Record<string, unknown>) => unknown;
   interstitial?: {
+    showIfReady?: (opts?: Record<string, unknown>) => unknown;
     show?: (opts?: Record<string, unknown>) => unknown;
     ready?: () => unknown;
   };
@@ -26,6 +31,7 @@ type MedianAdmob = {
   showInterstitial?: (opts?: Record<string, unknown>) => unknown;
   showInterstitialAd?: (opts?: Record<string, unknown>) => unknown;
 };
+
 
 type MedianBridge = { admob?: MedianAdmob };
 
