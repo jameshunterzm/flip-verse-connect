@@ -101,9 +101,7 @@ function FeedPage() {
         onScroll={(e) => setActiveIndex(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
       >
         {items.map((item, i) =>
-          item.type === "google" ? (
-            <FeedAdSlot key={item.key} />
-          ) : item.type === "ad" ? (
+          item.type === "ad" ? (
             <AdCard key={`ad-${item.ad.id}-${i}`} ad={item.ad} active={i === activeIndex} />
           ) : (
             <FeedCard key={item.post.id} post={item.post} active={i === activeIndex} />
