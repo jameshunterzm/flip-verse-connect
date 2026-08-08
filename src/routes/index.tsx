@@ -29,7 +29,7 @@ export const Route = createFileRoute("/")({
 
 const tabs = ["For You", "Friends"] as const;
 
-type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad } | { type: "google"; key: string };
+type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad };
 
 function FeedPage() {
   const { adFrequency, user } = useFlip();
@@ -45,15 +45,12 @@ function FeedPage() {
     // Home is shorts-only. Long-form lives on Discover.
     const posts = tab === "For You" ? source.filter((p) => p.format !== "long") : source;
     const out: Item[] = [];
-    let googleCount = 0;
     posts.forEach((post, i) => {
       out.push({ type: "post", post });
       if (tab !== "For You") return;
       const n = i + 1;
-      // Ads never appear in the private friends feed.
-      if (n % ADS_EVERY === 0) {
-        out.push({ type: "google", key: `g-${googleCount++}` });
-      } else if (ads.length && n % adFrequency === 0) {
+      // Shorts sponsorship is AdMob-only (native shell) — no AdSense pages here.
+      if (ads.length && n % adFrequency === 0) {
         out.push({ type: "ad", ad: ads[Math.floor(i / adFrequency) % ads.length]! });
       }
     });
