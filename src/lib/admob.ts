@@ -1,13 +1,33 @@
 /**
- * AdMob bridge for WebToNative Android builds.
+ * AdMob bridge for native Android shells.
  *
- * WebToNative injects a `window.WTN` object into the WebView. AdMob unit IDs
- * are configured in the WebToNative dashboard (Monetization → AdMob), so the
- * web app only needs to ask the shell to show/hide the right ad type.
+ * Supports two shells, whichever is present at runtime:
+ *  - Median.co  → `window.median.admob.*` (also `window.gonative.admob.*`)
+ *  - WebToNative → `window.WTN.AdMob.*`
  *
- * In a normal browser none of this exists, so every call is a safe no-op and
- * the UI falls back to the existing AdSense slots / placeholders.
+ * Ad unit IDs live in the shell's dashboard, never in this code. In a plain
+ * browser every call is a safe no-op and the UI falls back to the AdSense
+ * slots / placeholders.
  */
+
+type Maybe<T> = T | undefined;
+
+type MedianAdmob = {
+  banner?: {
+    show?: (opts?: Record<string, unknown>) => unknown;
+    hide?: (opts?: Record<string, unknown>) => unknown;
+  };
+  interstitial?: {
+    show?: (opts?: Record<string, unknown>) => unknown;
+    ready?: () => unknown;
+  };
+  showBanner?: (opts?: Record<string, unknown>) => unknown;
+  hideBanner?: (opts?: Record<string, unknown>) => unknown;
+  showInterstitial?: (opts?: Record<string, unknown>) => unknown;
+  showInterstitialAd?: (opts?: Record<string, unknown>) => unknown;
+};
+
+type MedianBridge = { admob?: MedianAdmob };
 
 type WTNBridge = {
   AdMob?: {
@@ -27,60 +47,85 @@ declare global {
   interface Window {
     WTN?: WTNBridge;
     webtonative?: WTNBridge;
+    median?: MedianBridge;
+    gonative?: MedianBridge;
   }
 }
 
-function bridge(): WTNBridge | undefined {
+function wtn(): Maybe<WTNBridge> {
   if (typeof window === "undefined") return undefined;
   return window.WTN ?? window.webtonative;
 }
 
-/** True when running inside the WebToNative Android shell. */
-export function isNativeShell() {
-  return !!bridge();
+function median(): Maybe<MedianAdmob> {
+  if (typeof window === "undefined") return undefined;
+  return window.median?.admob ?? window.gonative?.admob;
 }
 
-export function showBannerAd(position: "top" | "bottom" = "bottom") {
-  const wtn = bridge();
-  if (!wtn) return false;
+/** Which native shell (if any) we're running inside. */
+export function nativeShell(): "median" | "webtonative" | null {
+  if (median()) return "median";
+  if (wtn()) return "webtonative";
+  return null;
+}
+
+/** True when running inside a native shell that can serve AdMob. */
+export function isNativeShell() {
+  return nativeShell() !== null;
+}
+
+function call(fn: Maybe<(...args: never[]) => unknown>, arg?: unknown) {
+  if (typeof fn !== "function") return false;
   try {
-    if (wtn.AdMob?.showBanner) wtn.AdMob.showBanner({ position });
-    else if (wtn.showBannerAd) wtn.showBannerAd({ position });
-    else return false;
+    (fn as (a?: unknown) => unknown)(arg);
     return true;
   } catch {
     return false;
   }
+}
+
+let bannerVisible = false;
+
+export function showBannerAd(position: "top" | "bottom" = "bottom") {
+  const m = median();
+  if (m) {
+    const ok =
+      call(m.banner?.show, { position, align: position }) || call(m.showBanner, { position, align: position });
+    bannerVisible = bannerVisible || ok;
+    return ok;
+  }
+  const w = wtn();
+  if (!w) return false;
+  const ok = call(w.AdMob?.showBanner, { position }) || call(w.showBannerAd, { position });
+  bannerVisible = bannerVisible || ok;
+  return ok;
 }
 
 export function hideBannerAd() {
-  const wtn = bridge();
-  if (!wtn) return;
-  try {
-    if (wtn.AdMob?.hideBanner) wtn.AdMob.hideBanner();
-    else wtn.hideBannerAd?.();
-  } catch {
-    /* shell without AdMob configured */
+  const m = median();
+  if (m) {
+    call(m.banner?.hide, {}) || call(m.hideBanner, {});
+    bannerVisible = false;
+    return;
   }
+  const w = wtn();
+  if (!w) return;
+  call(w.AdMob?.hideBanner) || call(w.hideBannerAd);
+  bannerVisible = false;
 }
 
 export function showInterstitialAd() {
-  const wtn = bridge();
-  if (!wtn) return false;
-  try {
-    if (wtn.AdMob?.showInterstitial) wtn.AdMob.showInterstitial();
-    else if (wtn.showInterstitialAd) wtn.showInterstitialAd();
-    else return false;
-    return true;
-  } catch {
-    return false;
-  }
+  const m = median();
+  if (m) return call(m.interstitial?.show, {}) || call(m.showInterstitial, {}) || call(m.showInterstitialAd, {});
+  const w = wtn();
+  if (!w) return false;
+  return call(w.AdMob?.showInterstitial) || call(w.showInterstitialAd);
 }
 
 /** Shorts: one interstitial after every N clips. */
 export const SHORTS_PER_INTERSTITIAL = 5;
 
-/** Long-form pre-roll: how long we hold the video while the ad plays. */
+/** Long-form pre-roll: how long we hold the video while the ad opens. */
 export const PREROLL_HOLD_MS = 900;
 
 /** Minimum gap between interstitials so rapid swiping can't spam them. */
@@ -88,9 +133,23 @@ const INTERSTITIAL_COOLDOWN_MS = 45_000;
 let lastInterstitial = 0;
 
 export function maybeShowInterstitial() {
+  // Interstitials only ever come from a native shell — never in the browser.
+  if (!isNativeShell()) return false;
   const now = Date.now();
   if (now - lastInterstitial < INTERSTITIAL_COOLDOWN_MS) return false;
+  // A visible banner + interstitial at once looks broken; drop the banner.
+  if (bannerVisible) hideBannerAd();
   const shown = showInterstitialAd();
   if (shown) lastInterstitial = now;
   return shown;
+}
+
+/** Debug helper: run `window.flipAdDebug()` in the shell to inspect the bridge. */
+if (typeof window !== "undefined") {
+  (window as unknown as Record<string, unknown>)['flipAdDebug'] = () => ({
+    shell: nativeShell(),
+    median: Object.keys(median() ?? {}),
+    wtn: Object.keys(wtn()?.AdMob ?? wtn() ?? {}),
+    bannerVisible,
+  });
 }
