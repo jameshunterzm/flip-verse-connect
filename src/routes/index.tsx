@@ -3,9 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdCard, FeedCard } from "@/components/FeedCard";
-import { FeedAdSlot } from "@/components/GoogleAd";
 import { useFlip } from "@/lib/flip-store";
-import { ADS_EVERY } from "@/lib/ads-config";
 import { SHORTS_PER_INTERSTITIAL, maybeShowInterstitial } from "@/lib/admob";
 import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
@@ -31,7 +29,7 @@ export const Route = createFileRoute("/")({
 
 const tabs = ["For You", "Friends"] as const;
 
-type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad } | { type: "google"; key: string };
+type Item = { type: "post"; post: FeedPost } | { type: "ad"; ad: Ad };
 
 function FeedPage() {
   const { adFrequency, user } = useFlip();
@@ -47,15 +45,12 @@ function FeedPage() {
     // Home is shorts-only. Long-form lives on Discover.
     const posts = tab === "For You" ? source.filter((p) => p.format !== "long") : source;
     const out: Item[] = [];
-    let googleCount = 0;
     posts.forEach((post, i) => {
       out.push({ type: "post", post });
       if (tab !== "For You") return;
       const n = i + 1;
-      // Ads never appear in the private friends feed.
-      if (n % ADS_EVERY === 0) {
-        out.push({ type: "google", key: `g-${googleCount++}` });
-      } else if (ads.length && n % adFrequency === 0) {
+      // Shorts sponsorship is AdMob-only (native shell) — no AdSense pages here.
+      if (ads.length && n % adFrequency === 0) {
         out.push({ type: "ad", ad: ads[Math.floor(i / adFrequency) % ads.length]! });
       }
     });
@@ -69,8 +64,9 @@ function FeedPage() {
     const watched = items.slice(0, activeIndex + 1).filter((it) => it.type === "post").length;
     const milestone = Math.floor(watched / SHORTS_PER_INTERSTITIAL);
     if (milestone > lastMilestone.current) {
-      lastMilestone.current = milestone;
-      maybeShowInterstitial();
+      // Only consume the milestone once an ad actually fired; otherwise we
+      // retry on the next swipe (Median may still be pre-loading).
+      if (maybeShowInterstitial()) lastMilestone.current = milestone;
     }
   }, [activeIndex, items, tab]);
 
@@ -106,9 +102,7 @@ function FeedPage() {
         onScroll={(e) => setActiveIndex(Math.round(e.currentTarget.scrollTop / e.currentTarget.clientHeight))}
       >
         {items.map((item, i) =>
-          item.type === "google" ? (
-            <FeedAdSlot key={item.key} />
-          ) : item.type === "ad" ? (
+          item.type === "ad" ? (
             <AdCard key={`ad-${item.ad.id}-${i}`} ad={item.ad} active={i === activeIndex} />
           ) : (
             <FeedCard key={item.post.id} post={item.post} active={i === activeIndex} />

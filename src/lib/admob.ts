@@ -147,14 +147,19 @@ export const SHORTS_PER_INTERSTITIAL = 5;
 export const PREROLL_HOLD_MS = 900;
 
 /** Minimum gap between interstitials so rapid swiping can't spam them. */
-const INTERSTITIAL_COOLDOWN_MS = 45_000;
+const INTERSTITIAL_COOLDOWN_MS = 8_000;
 let lastInterstitial = 0;
 
-export function maybeShowInterstitial() {
+/**
+ * Show an interstitial when running inside a native shell.
+ * `force` skips the cooldown — used for long-form pre-roll, which is always
+ * an explicit user action (tapping play) rather than passive swiping.
+ */
+export function maybeShowInterstitial(force = false) {
   // Interstitials only ever come from a native shell — never in the browser.
   if (!isNativeShell()) return false;
   const now = Date.now();
-  if (now - lastInterstitial < INTERSTITIAL_COOLDOWN_MS) return false;
+  if (!force && now - lastInterstitial < INTERSTITIAL_COOLDOWN_MS) return false;
   const shown = showInterstitialAd();
   // Median keeps its banner app-wide; only WebToNative needs the manual hide.
   if (shown && bannerVisible && !median()) hideBannerAd();
