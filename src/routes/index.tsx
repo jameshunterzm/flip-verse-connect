@@ -3,9 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdCard, FeedCard } from "@/components/FeedCard";
-import { FeedAdSlot } from "@/components/GoogleAd";
 import { useFlip } from "@/lib/flip-store";
-import { ADS_EVERY } from "@/lib/ads-config";
 import { SHORTS_PER_INTERSTITIAL, maybeShowInterstitial } from "@/lib/admob";
 import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
