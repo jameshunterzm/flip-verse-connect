@@ -64,8 +64,9 @@ function FeedPage() {
     const watched = items.slice(0, activeIndex + 1).filter((it) => it.type === "post").length;
     const milestone = Math.floor(watched / SHORTS_PER_INTERSTITIAL);
     if (milestone > lastMilestone.current) {
-      lastMilestone.current = milestone;
-      maybeShowInterstitial();
+      // Only consume the milestone once an ad actually fired; otherwise we
+      // retry on the next swipe (Median may still be pre-loading).
+      if (maybeShowInterstitial()) lastMilestone.current = milestone;
     }
   }, [activeIndex, items, tab]);
 
