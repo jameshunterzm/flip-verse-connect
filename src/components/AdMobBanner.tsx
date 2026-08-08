@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { hideBannerAd, isNativeShell, showBannerAd } from "@/lib/admob";
+import { hideBannerAd, isNativeShell, nativeShell, showBannerAd } from "@/lib/admob";
 
 /**
  * Bottom banner shown on profile / creator-page screens.
@@ -15,9 +15,11 @@ export function ProfileBannerAd() {
     setNative(isNativeShell());
     const shown = showBannerAd("bottom");
     return () => {
-      if (shown) hideBannerAd();
+      // Median's banner is app-wide; leave it enabled when we leave the page.
+      if (shown && nativeShell() !== "median") hideBannerAd();
     };
   }, []);
+
 
   if (native) {
     // The native banner floats above the WebView — just reserve the space.

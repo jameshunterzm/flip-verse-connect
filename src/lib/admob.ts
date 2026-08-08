@@ -14,10 +14,15 @@ type Maybe<T> = T | undefined;
 
 type MedianAdmob = {
   banner?: {
+    enable?: (opts?: Record<string, unknown>) => unknown;
+    disable?: (opts?: Record<string, unknown>) => unknown;
     show?: (opts?: Record<string, unknown>) => unknown;
     hide?: (opts?: Record<string, unknown>) => unknown;
   };
+  showInterstitialIfReady?: (opts?: Record<string, unknown>) => unknown;
+  showInterstitialOnNextPageLoadIfReady?: (opts?: Record<string, unknown>) => unknown;
   interstitial?: {
+    showIfReady?: (opts?: Record<string, unknown>) => unknown;
     show?: (opts?: Record<string, unknown>) => unknown;
     ready?: () => unknown;
   };
@@ -26,6 +31,7 @@ type MedianAdmob = {
   showInterstitial?: (opts?: Record<string, unknown>) => unknown;
   showInterstitialAd?: (opts?: Record<string, unknown>) => unknown;
 };
+
 
 type MedianBridge = { admob?: MedianAdmob };
 
@@ -89,8 +95,11 @@ let bannerVisible = false;
 export function showBannerAd(position: "top" | "bottom" = "bottom") {
   const m = median();
   if (m) {
+    // Median: banner is app-wide and controlled with enable()/disable().
     const ok =
-      call(m.banner?.show, { position, align: position }) || call(m.showBanner, { position, align: position });
+      call(m.banner?.enable, {}) ||
+      call(m.banner?.show, { position, align: position }) ||
+      call(m.showBanner, { position, align: position });
     bannerVisible = bannerVisible || ok;
     return ok;
   }
@@ -104,7 +113,7 @@ export function showBannerAd(position: "top" | "bottom" = "bottom") {
 export function hideBannerAd() {
   const m = median();
   if (m) {
-    call(m.banner?.hide, {}) || call(m.hideBanner, {});
+    call(m.banner?.disable, {}) || call(m.banner?.hide, {}) || call(m.hideBanner, {});
     bannerVisible = false;
     return;
   }
@@ -116,7 +125,16 @@ export function hideBannerAd() {
 
 export function showInterstitialAd() {
   const m = median();
-  if (m) return call(m.interstitial?.show, {}) || call(m.showInterstitial, {}) || call(m.showInterstitialAd, {});
+  if (m) {
+    // Median only shows an interstitial when one is pre-loaded and ready.
+    return (
+      call(m.showInterstitialIfReady, {}) ||
+      call(m.interstitial?.showIfReady, {}) ||
+      call(m.interstitial?.show, {}) ||
+      call(m.showInterstitial, {}) ||
+      call(m.showInterstitialAd, {})
+    );
+  }
   const w = wtn();
   if (!w) return false;
   return call(w.AdMob?.showInterstitial) || call(w.showInterstitialAd);
@@ -137,12 +155,13 @@ export function maybeShowInterstitial() {
   if (!isNativeShell()) return false;
   const now = Date.now();
   if (now - lastInterstitial < INTERSTITIAL_COOLDOWN_MS) return false;
-  // A visible banner + interstitial at once looks broken; drop the banner.
-  if (bannerVisible) hideBannerAd();
   const shown = showInterstitialAd();
+  // Median keeps its banner app-wide; only WebToNative needs the manual hide.
+  if (shown && bannerVisible && !median()) hideBannerAd();
   if (shown) lastInterstitial = now;
   return shown;
 }
+
 
 /** Debug helper: run `window.flipAdDebug()` in the shell to inspect the bridge. */
 if (typeof window !== "undefined") {
