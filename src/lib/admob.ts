@@ -140,32 +140,99 @@ export function showInterstitialAd() {
   return call(w.AdMob?.showInterstitial) || call(w.showInterstitialAd);
 }
 
-/** Shorts: one interstitial after every N clips. */
-export const SHORTS_PER_INTERSTITIAL = 5;
+// Median keeps its banner app-wide; only WebToNative needs the manual hide
+// after an interstitial takes over the screen.
+function afterInterstitialShown() {
+  if (bannerVisible && !median()) hideBannerAd();
+}
+
+/* -------------------------------------------------------------------- *
+ * Shorts interstitials
+ *
+ * Rule: count actual Shorts watched (never AdCards/sponsored/banners).
+ * After exactly SHORTS_PER_INTERSTITIAL shorts, attempt an interstitial.
+ * If it shows, start a SHORTS_COOLDOWN_MS cooldown during which shorts
+ * keep playing but are NOT counted. Once the cooldown expires the counter
+ * resumes counting from 0 on the next short.
+ *
+ * State is module-level (not React state) so it survives re-renders,
+ * remounts, and React Strict Mode's double-invoked effects without ever
+ * getting stuck or resetting unexpectedly.
+ * -------------------------------------------------------------------- */
+
+export const SHORTS_PER_INTERSTITIAL = 4;
+const SHORTS_COOLDOWN_MS = 30_000;
+
+let shortsCount = 0;
+let shortsCooldownUntil = 0;
+let lastShortsAdShown = 0;
+
+/**
+ * Call exactly once per distinct Short that becomes active (the caller is
+ * responsible for deduping so a re-render on the same short doesn't double
+ * count). AdCards/sponsored items must never be passed through this.
+ */
+export function registerShortWatched(): void {
+  const now = Date.now();
+
+  // Cooldown active: shorts play normally, nothing is counted.
+  if (now < shortsCooldownUntil) return;
+
+  shortsCount += 1;
+  if (shortsCount < SHORTS_PER_INTERSTITIAL) return;
+
+  if (!isNativeShell()) {
+    // No native shell (plain browser) — nothing can ever be shown here, so
+    // reset rather than sit stuck at the threshold forever.
+    shortsCount = 0;
+    return;
+  }
+
+  const shown = showInterstitialAd();
+  if (shown) {
+    afterInterstitialShown();
+    shortsCount = 0;
+    lastShortsAdShown = now;
+    shortsCooldownUntil = now + SHORTS_COOLDOWN_MS;
+  }
+  // If not shown (not loaded / failed), leave the counter at the threshold:
+  // the next short retries automatically without blocking the feed, and
+  // without ever incrementing past the threshold.
+}
+
+/* -------------------------------------------------------------------- *
+ * Long-form pre-roll interstitials
+ *
+ * Rule: independent from Shorts. When a long-form video opens, only show a
+ * pre-roll if at least LONGFORM_COOLDOWN_MS has passed since the last one.
+ * -------------------------------------------------------------------- */
+
+const LONGFORM_COOLDOWN_MS = 3 * 60 * 1_000;
+
+let lastLongFormAdShown = 0;
+let longFormCooldownUntil = 0;
+
+/**
+ * Call when a long-form video is opened, before playback starts. Returns
+ * whether an interstitial was actually shown (used to decide how long to
+ * hold the "Sponsored" screen for).
+ */
+export function maybeShowLongFormInterstitial(): boolean {
+  if (!isNativeShell()) return false;
+  const now = Date.now();
+  if (now < longFormCooldownUntil) return false;
+
+  const shown = showInterstitialAd();
+  if (shown) {
+    afterInterstitialShown();
+    lastLongFormAdShown = now;
+    longFormCooldownUntil = now + LONGFORM_COOLDOWN_MS;
+  }
+  return shown;
+}
 
 /** Long-form pre-roll: how long we hold the video while the ad opens. */
 export const PREROLL_HOLD_MS = 900;
-
-/** Minimum gap between interstitials so rapid swiping can't spam them. */
-const INTERSTITIAL_COOLDOWN_MS = 8_000;
-let lastInterstitial = 0;
-
-/**
- * Show an interstitial when running inside a native shell.
- * `force` skips the cooldown — used for long-form pre-roll, which is always
- * an explicit user action (tapping play) rather than passive swiping.
- */
-export function maybeShowInterstitial(force = false) {
-  // Interstitials only ever come from a native shell — never in the browser.
-  if (!isNativeShell()) return false;
-  const now = Date.now();
-  if (!force && now - lastInterstitial < INTERSTITIAL_COOLDOWN_MS) return false;
-  const shown = showInterstitialAd();
-  // Median keeps its banner app-wide; only WebToNative needs the manual hide.
-  if (shown && bannerVisible && !median()) hideBannerAd();
-  if (shown) lastInterstitial = now;
-  return shown;
-}
 
 
 /** Debug helper: run `window.flipAdDebug()` in the shell to inspect the bridge. */
@@ -175,5 +242,7 @@ if (typeof window !== "undefined") {
     median: Object.keys(median() ?? {}),
     wtn: Object.keys(wtn()?.AdMob ?? wtn() ?? {}),
     bannerVisible,
+    shorts: { count: shortsCount, cooldownUntil: shortsCooldownUntil, lastAdShown: lastShortsAdShown },
+    longForm: { cooldownUntil: longFormCooldownUntil, lastAdShown: lastLongFormAdShown },
   });
 }
