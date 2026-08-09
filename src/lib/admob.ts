@@ -90,6 +90,8 @@ function call(fn: Maybe<(...args: never[]) => unknown>, arg?: unknown) {
   }
 }
 
+const LOG = "[AdMob]";
+
 let bannerVisible = false;
 
 export function showBannerAd(position: "top" | "bottom" = "bottom") {
@@ -123,20 +125,59 @@ export function hideBannerAd() {
   bannerVisible = false;
 }
 
-export function showInterstitialAd() {
+/**
+ * Ask the native shell to show an interstitial.
+ *
+ * Median: calls ONLY the documented `median.admob.showInterstitialIfReady()`
+ * — no guessed/undocumented method names (no `.interstitial.show()`, no
+ * `.showInterstitial()`, no `.showInterstitialAd()`). Per Median's docs this
+ * function shows an ad if (and only if) one is already loaded and ready; if
+ * nothing is loaded it is a documented no-op.
+ *
+ * IMPORTANT — hard limitation, not a guess: this call is fire-and-forget.
+ * This project's Median bridge (as declared above and as verified against
+ * this codebase — no Promise, no callback field, no window event listener
+ * anywhere) gives NO signal confirming an ad was actually displayed,
+ * closed, or failed. The boolean this function returns means only "the
+ * call reached the native side without throwing a JS error" — it is not,
+ * and must never be treated as, proof the user saw an ad. Callers
+ * (registerShortWatched, maybeShowLongFormInterstitial) do not use this
+ * return value to decide whether to reset their counters/cooldowns, for
+ * exactly this reason — see the comments there.
+ *
+ * Also note: Shorts and long-form both call this same function, which
+ * means — at the native/AdMob level — they draw from the SAME loaded
+ * interstitial inventory (however many interstitial ad units Median is
+ * configured with in App Studio, typically one). Their JS-level counters
+ * and cooldowns are fully independent (see below), but that independence
+ * is only in the bookkeeping logic, not in the underlying ad supply: if
+ * Shorts consumes the one loaded ad, a long-form pre-roll requested a
+ * moment later can legitimately have nothing to show, and vice versa.
+ * No amount of JS/TypeScript restructuring changes that — it would take a
+ * Median App Studio change (e.g. separate interstitial ad units per
+ * surface, if Median supports that) to give the two surfaces genuinely
+ * separate inventory.
+ *
+ * WebToNative is a separate, unrelated shell and is left exactly as before.
+ */
+export function requestMedianInterstitial(): boolean {
   const m = median();
   if (m) {
-    // Median only shows an interstitial when one is pre-loaded and ready.
-    return (
-      call(m.showInterstitialIfReady, {}) ||
-      call(m.interstitial?.showIfReady, {}) ||
-      call(m.interstitial?.show, {}) ||
-      call(m.showInterstitial, {}) ||
-      call(m.showInterstitialAd, {})
+    console.log(`${LOG} Median bridge present: true — calling median.admob.showInterstitialIfReady()`);
+    const requested = call(m.showInterstitialIfReady, {});
+    console.log(
+      requested
+        ? `${LOG} showInterstitialIfReady() dispatched (this does NOT confirm an ad was shown — ` +
+            `Median silently no-ops when nothing is loaded)`
+        : `${LOG} showInterstitialIfReady() unavailable or threw — treating as not shown`,
     );
+    return requested;
   }
   const w = wtn();
-  if (!w) return false;
+  if (!w) {
+    console.log(`${LOG} Median bridge present: false, no native shell — skipping interstitial`);
+    return false;
+  }
   return call(w.AdMob?.showInterstitial) || call(w.showInterstitialAd);
 }
 
@@ -150,10 +191,17 @@ function afterInterstitialShown() {
  * Shorts interstitials
  *
  * Rule: count actual Shorts watched (never AdCards/sponsored/banners).
- * After exactly SHORTS_PER_INTERSTITIAL shorts, attempt an interstitial.
- * If it shows, start a SHORTS_COOLDOWN_MS cooldown during which shorts
- * keep playing but are NOT counted. Once the cooldown expires the counter
- * resumes counting from 0 on the next short.
+ * After exactly SHORTS_PER_INTERSTITIAL shorts, request an interstitial.
+ * If the request is dispatched, start a SHORTS_COOLDOWN_MS cooldown during
+ * which shorts keep playing but are NOT counted. Once the cooldown expires
+ * the counter resumes counting from 0 on the next short.
+ *
+ * This state (shortsCount / shortsCooldownUntil / lastShortsAdAttempt) is
+ * completely separate from the long-form state below — a Shorts request
+ * never reads or writes longFormCooldownUntil, and vice versa. Their JS
+ * bookkeeping can never block each other in this file (see the shared-
+ * inventory caveat on requestMedianInterstitial() above, though — that's
+ * a separate, platform-level constraint this file can't remove).
  *
  * State is module-level (not React state) so it survives re-renders,
  * remounts, and React Strict Mode's double-invoked effects without ever
@@ -165,7 +213,7 @@ const SHORTS_COOLDOWN_MS = 30_000;
 
 let shortsCount = 0;
 let shortsCooldownUntil = 0;
-let lastShortsAdShown = 0;
+let lastShortsAdAttempt = 0;
 
 /**
  * Call exactly once per distinct Short that becomes active (the caller is
@@ -175,60 +223,93 @@ let lastShortsAdShown = 0;
 export function registerShortWatched(): void {
   const now = Date.now();
 
-  // Cooldown active: shorts play normally, nothing is counted.
-  if (now < shortsCooldownUntil) return;
+  if (now < shortsCooldownUntil) {
+    console.log(`${LOG} Shorts: cooldown active (${Math.ceil((shortsCooldownUntil - now) / 1000)}s left) — not counted`);
+    return;
+  }
 
   shortsCount += 1;
+  console.log(`${LOG} Shorts: count ${shortsCount}/${SHORTS_PER_INTERSTITIAL}`);
   if (shortsCount < SHORTS_PER_INTERSTITIAL) return;
 
+  console.log(`${LOG} Shorts: reached ${SHORTS_PER_INTERSTITIAL} — attempting interstitial`);
+
   if (!isNativeShell()) {
-    // No native shell (plain browser) — nothing can ever be shown here, so
-    // reset rather than sit stuck at the threshold forever.
+    // No native shell at all (plain browser) — there is no ad inventory to
+    // even attempt against, so reset rather than sit stuck at the
+    // threshold forever. This is a known-negative, not a guess.
+    console.log(`${LOG} Shorts: no native shell — resetting counter, nothing to attempt`);
     shortsCount = 0;
     return;
   }
 
-  const shown = showInterstitialAd();
-  if (shown) {
-    afterInterstitialShown();
-    shortsCount = 0;
-    lastShortsAdShown = now;
-    shortsCooldownUntil = now + SHORTS_COOLDOWN_MS;
-  }
-  // If not shown (not loaded / failed), leave the counter at the threshold:
-  // the next short retries automatically without blocking the feed, and
-  // without ever incrementing past the threshold.
+  // Median gives no confirmation of display (see requestMedianInterstitial
+  // doc comment above), so the return value here is deliberately NOT used
+  // to decide whether to reset the counter or start the cooldown. We only
+  // know one thing for certain: we made our one allowed attempt for this
+  // cycle. That fact — not the ambiguous return value — is what advances
+  // the state machine. The alternative (waiting for a "confirmed shown"
+  // signal that Median never sends) would mean calling
+  // showInterstitialIfReady() again on every single subsequent short,
+  // forever, which is the spam/no-rest-period behavior we're trying to
+  // avoid — and is not "sensible retry behavior".
+  requestMedianInterstitial();
+  afterInterstitialShown();
+  shortsCount = 0;
+  lastShortsAdAttempt = now;
+  shortsCooldownUntil = now + SHORTS_COOLDOWN_MS;
+  console.log(
+    `${LOG} Shorts: attempt made — counter reset to 0, cooldown for ${SHORTS_COOLDOWN_MS / 1000}s ` +
+      `(this does NOT confirm the ad was actually shown to the user)`,
+  );
 }
 
 /* -------------------------------------------------------------------- *
  * Long-form pre-roll interstitials
  *
- * Rule: independent from Shorts. When a long-form video opens, only show a
- * pre-roll if at least LONGFORM_COOLDOWN_MS has passed since the last one.
+ * Rule: independent from Shorts — see note above. When a long-form video
+ * opens, only attempt a pre-roll if at least LONGFORM_COOLDOWN_MS has
+ * passed since the last attempt.
  * -------------------------------------------------------------------- */
 
 const LONGFORM_COOLDOWN_MS = 3 * 60 * 1_000;
 
-let lastLongFormAdShown = 0;
+let lastLongFormAdAttempt = 0;
 let longFormCooldownUntil = 0;
 
 /**
  * Call when a long-form video is opened, before playback starts. Returns
- * whether an interstitial was actually shown (used to decide how long to
- * hold the "Sponsored" screen for).
+ * whether the interstitial request was dispatched to the native bridge
+ * (used only to decide how long to hold the "Sponsored" screen for) —
+ * NOT proof it was actually seen. See requestMedianInterstitial().
  */
 export function maybeShowLongFormInterstitial(): boolean {
-  if (!isNativeShell()) return false;
-  const now = Date.now();
-  if (now < longFormCooldownUntil) return false;
-
-  const shown = showInterstitialAd();
-  if (shown) {
-    afterInterstitialShown();
-    lastLongFormAdShown = now;
-    longFormCooldownUntil = now + LONGFORM_COOLDOWN_MS;
+  if (!isNativeShell()) {
+    console.log(`${LOG} Long-form: no native shell — skipping pre-roll, playing normally`);
+    return false;
   }
-  return shown;
+  const now = Date.now();
+  if (now < longFormCooldownUntil) {
+    console.log(`${LOG} Long-form: cooldown active (${Math.ceil((longFormCooldownUntil - now) / 1000)}s left) — skipping pre-roll`);
+    return false;
+  }
+
+  console.log(`${LOG} Long-form: cooldown elapsed — attempting interstitial`);
+  // Same limitation as Shorts (see above and requestMedianInterstitial):
+  // Median gives no confirmation of display, so the cooldown is started
+  // because we made our one attempt for this video open — not because the
+  // JS call "succeeded". The dispatched boolean is only returned to the
+  // caller for the pre-roll hold-time UI decision, never used here to
+  // gate the cooldown.
+  const dispatched = requestMedianInterstitial();
+  afterInterstitialShown();
+  lastLongFormAdAttempt = now;
+  longFormCooldownUntil = now + LONGFORM_COOLDOWN_MS;
+  console.log(
+    `${LOG} Long-form: attempt made — cooldown for ${LONGFORM_COOLDOWN_MS / 1000}s ` +
+      `(this does NOT confirm the ad was actually shown to the user)`,
+  );
+  return dispatched;
 }
 
 /** Long-form pre-roll: how long we hold the video while the ad opens. */
@@ -242,7 +323,7 @@ if (typeof window !== "undefined") {
     median: Object.keys(median() ?? {}),
     wtn: Object.keys(wtn()?.AdMob ?? wtn() ?? {}),
     bannerVisible,
-    shorts: { count: shortsCount, cooldownUntil: shortsCooldownUntil, lastAdShown: lastShortsAdShown },
-    longForm: { cooldownUntil: longFormCooldownUntil, lastAdShown: lastLongFormAdShown },
+    shorts: { count: shortsCount, cooldownUntil: shortsCooldownUntil, lastAttempt: lastShortsAdAttempt },
+    longForm: { cooldownUntil: longFormCooldownUntil, lastAttempt: lastLongFormAdAttempt },
   });
 }
