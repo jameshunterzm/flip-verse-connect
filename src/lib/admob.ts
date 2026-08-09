@@ -192,7 +192,8 @@ function afterInterstitialShown() {
  *
  * Rule: count actual Shorts watched (never AdCards/sponsored/banners).
  * After exactly SHORTS_PER_INTERSTITIAL shorts, request an interstitial.
- * If the request is dispatched, start a SHORTS_COOLDOWN_MS cooldown during
+ * If the request is dispatched, start a SHORTS_ATTEMPT_COOLDOWN_MS window
+ * (an application-side pacing rule, NOT proof an ad was shown) during
  * which shorts keep playing but are NOT counted. Once the cooldown expires
  * the counter resumes counting from 0 on the next short.
  *
@@ -209,7 +210,8 @@ function afterInterstitialShown() {
  * -------------------------------------------------------------------- */
 
 export const SHORTS_PER_INTERSTITIAL = 4;
-const SHORTS_COOLDOWN_MS = 30_000;
+/** Application-side pacing only — an ATTEMPT cooldown, not proof an ad was shown. */
+const SHORTS_ATTEMPT_COOLDOWN_MS = 30_000;
 
 let shortsCount = 0;
 let shortsCooldownUntil = 0;
@@ -224,7 +226,7 @@ export function registerShortWatched(): void {
   const now = Date.now();
 
   if (now < shortsCooldownUntil) {
-    console.log(`${LOG} Shorts: cooldown active (${Math.ceil((shortsCooldownUntil - now) / 1000)}s left) — not counted`);
+    console.log(`${LOG} Shorts: attempt-cooldown active (${Math.ceil((shortsCooldownUntil - now) / 1000)}s left) — not counted`);
     return;
   }
 
@@ -248,18 +250,19 @@ export function registerShortWatched(): void {
   // to decide whether to reset the counter or start the cooldown. We only
   // know one thing for certain: we made our one allowed attempt for this
   // cycle. That fact — not the ambiguous return value — is what advances
-  // the state machine. The alternative (waiting for a "confirmed shown"
-  // signal that Median never sends) would mean calling
-  // showInterstitialIfReady() again on every single subsequent short,
-  // forever, which is the spam/no-rest-period behavior we're trying to
-  // avoid — and is not "sensible retry behavior".
+  // the state machine. The 30s window below is an APPLICATION-SIDE PACING
+  // RULE (how often we're willing to attempt), not a claim that an ad was
+  // shown. The alternative (waiting for a "confirmed shown" signal that
+  // Median never sends) would mean calling showInterstitialIfReady() again
+  // on every single subsequent short, forever — not "sensible retry
+  // behavior".
   requestMedianInterstitial();
   afterInterstitialShown();
   shortsCount = 0;
   lastShortsAdAttempt = now;
-  shortsCooldownUntil = now + SHORTS_COOLDOWN_MS;
+  shortsCooldownUntil = now + SHORTS_ATTEMPT_COOLDOWN_MS;
   console.log(
-    `${LOG} Shorts: attempt made — counter reset to 0, cooldown for ${SHORTS_COOLDOWN_MS / 1000}s ` +
+    `${LOG} Shorts: attempt made — counter reset to 0, ATTEMPT cooldown for ${SHORTS_ATTEMPT_COOLDOWN_MS / 1000}s ` +
       `(this does NOT confirm the ad was actually shown to the user)`,
   );
 }
@@ -268,11 +271,12 @@ export function registerShortWatched(): void {
  * Long-form pre-roll interstitials
  *
  * Rule: independent from Shorts — see note above. When a long-form video
- * opens, only attempt a pre-roll if at least LONGFORM_COOLDOWN_MS has
- * passed since the last attempt.
+ * opens, only attempt a pre-roll if at least LONGFORM_ATTEMPT_COOLDOWN_MS
+ * has passed since the last attempt.
  * -------------------------------------------------------------------- */
 
-const LONGFORM_COOLDOWN_MS = 3 * 60 * 1_000;
+/** Application-side pacing only — an ATTEMPT cooldown, not proof an ad was shown. */
+const LONGFORM_ATTEMPT_COOLDOWN_MS = 3 * 60 * 1_000;
 
 let lastLongFormAdAttempt = 0;
 let longFormCooldownUntil = 0;
@@ -280,7 +284,7 @@ let longFormCooldownUntil = 0;
 /**
  * Call when a long-form video is opened, before playback starts. Returns
  * whether the interstitial request was dispatched to the native bridge
- * (used only to decide how long to hold the "Sponsored" screen for) —
+ * (used only to decide whether to show the pre-roll overlay at all) —
  * NOT proof it was actually seen. See requestMedianInterstitial().
  */
 export function maybeShowLongFormInterstitial(): boolean {
@@ -290,23 +294,24 @@ export function maybeShowLongFormInterstitial(): boolean {
   }
   const now = Date.now();
   if (now < longFormCooldownUntil) {
-    console.log(`${LOG} Long-form: cooldown active (${Math.ceil((longFormCooldownUntil - now) / 1000)}s left) — skipping pre-roll`);
+    console.log(`${LOG} Long-form: attempt-cooldown active (${Math.ceil((longFormCooldownUntil - now) / 1000)}s left) — skipping pre-roll`);
     return false;
   }
 
-  console.log(`${LOG} Long-form: cooldown elapsed — attempting interstitial`);
+  console.log(`${LOG} Long-form: attempt-cooldown elapsed — attempting interstitial`);
   // Same limitation as Shorts (see above and requestMedianInterstitial):
-  // Median gives no confirmation of display, so the cooldown is started
-  // because we made our one attempt for this video open — not because the
-  // JS call "succeeded". The dispatched boolean is only returned to the
-  // caller for the pre-roll hold-time UI decision, never used here to
-  // gate the cooldown.
+  // Median gives no confirmation of display, so the cooldown below is an
+  // APPLICATION-SIDE PACING RULE started because we made our one attempt
+  // for this video open — not because the JS call "succeeded" or because
+  // an ad definitely displayed. The dispatched boolean is only returned to
+  // the caller so it can decide whether to show the pre-roll overlay at
+  // all — it is never used here to gate the cooldown.
   const dispatched = requestMedianInterstitial();
   afterInterstitialShown();
   lastLongFormAdAttempt = now;
-  longFormCooldownUntil = now + LONGFORM_COOLDOWN_MS;
+  longFormCooldownUntil = now + LONGFORM_ATTEMPT_COOLDOWN_MS;
   console.log(
-    `${LOG} Long-form: attempt made — cooldown for ${LONGFORM_COOLDOWN_MS / 1000}s ` +
+    `${LOG} Long-form: attempt made — ATTEMPT cooldown for ${LONGFORM_ATTEMPT_COOLDOWN_MS / 1000}s ` +
       `(this does NOT confirm the ad was actually shown to the user)`,
   );
   return dispatched;
