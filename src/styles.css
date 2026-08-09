@@ -209,3 +209,7 @@
 @utility animate-pop {
   animation: flip-pop 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
+
+#lovable-bage{
+  display:none !important;
+}
