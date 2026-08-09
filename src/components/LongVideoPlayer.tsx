@@ -51,13 +51,25 @@ export function LongVideoPlayer({
 
   async function start() {
     if (started) return;
-    setPreroll(true);
-    // Pre-roll: independent 3-minute cooldown from the Shorts feed. Only
-    // shows when at least 3 minutes have passed since the last long-form
-    // interstitial; otherwise this is a no-op and playback starts normally.
-    const shown = maybeShowLongFormInterstitial();
-    await new Promise((r) => setTimeout(r, shown ? PREROLL_HOLD_MS : 350));
-    setPreroll(false);
+    // Attempt the pre-roll BEFORE showing any overlay. The "Sponsored"
+    // screen is only displayed when the request was actually dispatched to
+    // the native bridge — not when Median has nothing loaded, we're not in
+    // a native shell, or the 3-minute attempt-cooldown is still active. In
+    // all of those cases we skip straight to playback instead of holding
+    // the video behind a screen for an ad that was never requested.
+    //
+    // NOTE: "dispatched" only means the JS call reached the native side
+    // without throwing — Median gives no confirmation the ad actually
+    // displayed (see maybeShowLongFormInterstitial / requestMedianInterstitial
+    // in src/lib/admob.ts). We still show the overlay in this case because
+    // it's the best available signal that an attempt is genuinely in
+    // flight; it is not a claim that an ad is guaranteed to appear.
+    const dispatched = maybeShowLongFormInterstitial();
+    if (dispatched) {
+      setPreroll(true);
+      await new Promise((r) => setTimeout(r, PREROLL_HOLD_MS));
+      setPreroll(false);
+    }
     setStarted(true);
     void ref.current?.play();
     nudgeControls();
