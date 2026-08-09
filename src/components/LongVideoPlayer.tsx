@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Maximize, Pause, Play, Settings2, Volume2, VolumeX } from "lucide-react";
-import { PREROLL_HOLD_MS, maybeShowInterstitial } from "@/lib/admob";
+import { PREROLL_HOLD_MS, maybeShowLongFormInterstitial } from "@/lib/admob";
 
 const SPEEDS = [0.5, 1, 1.25, 1.5, 2] as const;
 
@@ -52,9 +52,10 @@ export function LongVideoPlayer({
   async function start() {
     if (started) return;
     setPreroll(true);
-    // Pre-roll: hand off to the native AdMob interstitial when available.
-    // Forced so it never gets swallowed by the shorts-feed cooldown.
-    const shown = maybeShowInterstitial(true);
+    // Pre-roll: independent 3-minute cooldown from the Shorts feed. Only
+    // shows when at least 3 minutes have passed since the last long-form
+    // interstitial; otherwise this is a no-op and playback starts normally.
+    const shown = maybeShowLongFormInterstitial();
     await new Promise((r) => setTimeout(r, shown ? PREROLL_HOLD_MS : 350));
     setPreroll(false);
     setStarted(true);
