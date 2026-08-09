@@ -4,7 +4,7 @@ import { Search, Bell } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { AdCard, FeedCard } from "@/components/FeedCard";
 import { useFlip } from "@/lib/flip-store";
-import { SHORTS_PER_INTERSTITIAL, maybeShowInterstitial } from "@/lib/admob";
+import { registerShortWatched } from "@/lib/admob";
 import { useApprovedAds, useFriendsFeed, usePublicFeed, type Ad, type FeedPost } from "@/lib/data";
 
 export const Route = createFileRoute("/")({
@@ -57,17 +57,18 @@ function FeedPage() {
     return out;
   }, [tab, publicFeed.data, friendsFeed.data, ads, adFrequency]);
 
-  // AdMob (Android app): one interstitial after every 5 shorts.
-  const lastMilestone = useRef(0);
+  // AdMob (Android app): one interstitial after every 4 real shorts watched,
+  // then a 30s cooldown. AdCards/sponsored items never count — only "post"
+  // items do. `lastCountedIndex` dedupes so re-renders (or the same short
+  // staying active) never register the same short twice.
+  const lastCountedIndex = useRef<number | null>(null);
   useEffect(() => {
     if (tab !== "For You") return;
-    const watched = items.slice(0, activeIndex + 1).filter((it) => it.type === "post").length;
-    const milestone = Math.floor(watched / SHORTS_PER_INTERSTITIAL);
-    if (milestone > lastMilestone.current) {
-      // Only consume the milestone once an ad actually fired; otherwise we
-      // retry on the next swipe (Median may still be pre-loading).
-      if (maybeShowInterstitial()) lastMilestone.current = milestone;
-    }
+    const item = items[activeIndex];
+    if (!item || item.type !== "post") return;
+    if (lastCountedIndex.current === activeIndex) return;
+    lastCountedIndex.current = activeIndex;
+    registerShortWatched();
   }, [activeIndex, items, tab]);
 
   const loading = tab === "For You" ? publicFeed.isLoading : friendsFeed.isLoading;
