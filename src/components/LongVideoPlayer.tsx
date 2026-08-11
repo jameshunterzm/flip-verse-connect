@@ -40,8 +40,31 @@ export function LongVideoPlayer({
   const [buffering, setBuffering] = useState(false);
   const [controlsVisible, setControlsVisible] = useState(true);
   const hideTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  // Guards the native Android pre-roll: true while we've notified Android
+  // and are waiting for its startLongFormVideoFromAndroid() callback, so a
+  // re-render or repeat click/tap can't fire longFormVideoStarted() again.
+  const androidPendingRef = useRef(false);
 
   useEffect(() => () => clearTimeout(hideTimer.current), []);
+
+  useEffect(() => {
+    // Native Android calls this after the interstitial is dismissed. The
+    // selected video (src/poster/title, all still just props/state on this
+    // mounted component) is untouched while the ad is up, so this simply
+    // resumes exactly where `start()` would have gone next.
+    (window as unknown as Record<string, unknown>).startLongFormVideoFromAndroid = () => {
+      if (!androidPendingRef.current) return;
+      androidPendingRef.current = false;
+      setPreroll(false);
+      setStarted(true);
+      void ref.current?.play();
+      nudgeControls();
+    };
+    return () => {
+      delete (window as unknown as Record<string, unknown>).startLongFormVideoFromAndroid;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function nudgeControls() {
     setControlsVisible(true);
@@ -50,7 +73,18 @@ export function LongVideoPlayer({
   }
 
   async function start() {
-    if (started) return;
+    if (started || androidPendingRef.current) return;
+
+    if (typeof window !== "undefined" && (window as any).AndroidAds) {
+      // Native Android pre-roll path: notify Android that a long-form video
+      // was selected/started, then hold here — do NOT play — until Android
+      // calls window.startLongFormVideoFromAndroid() (registered above).
+      androidPendingRef.current = true;
+      setPreroll(true);
+      (window as any).AndroidAds.longFormVideoStarted();
+      return;
+    }
+
     // Attempt the pre-roll BEFORE showing any overlay. The "Sponsored"
     // screen is only displayed when the request was actually dispatched to
     // the native bridge — not when Median has nothing loaded, we're not in
